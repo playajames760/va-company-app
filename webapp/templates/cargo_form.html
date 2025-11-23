@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <h2 class="mb-3">Cargo Manifest</h2>
+  <form method="post" class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label">Date</label>
+      <input type="date" name="date" class="form-control">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Flight ID / Callsign</label>
+      <input type="text" name="flight_id" class="form-control" placeholder="PRA123">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Aircraft / Reg</label>
+      <input type="text" name="aircraft" class="form-control" placeholder="C172 N17PR">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Departure (ICAO)</label>
+      <input type="text" name="departure" class="form-control" placeholder="KPOC">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Arrival (ICAO)</label>
+      <input type="text" name="arrival" class="form-control" placeholder="KCRQ">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Total Weight (lbs)</label>
+      <input type="text" name="total_weight" class="form-control">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Pieces</label>
+      <input type="number" name="pieces" class="form-control">
+    </div>
+    <div class="col-12">
+      <label class="form-label">Notes / Cargo Breakdown (free text)</label>
+      <textarea name="notes" rows="4" class="form-control" placeholder="Describe main items, handling notes, etc."></textarea>
+    </div>
+    <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+      <a href="{{ url_for('cargo_history') }}" class="btn btn-outline-secondary">View History</a>
+      <button type="submit" class="btn btn-primary">Save Manifest</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

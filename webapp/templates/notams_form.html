@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <h2 class="mb-3">Company NOTAM</h2>
+  <form method="post" class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label">NOTAM ID</label>
+      <input type="text" name="notam_id" class="form-control" placeholder="PRA-NOTAM-001">
+    </div>
+    <div class="col-md-5">
+      <label class="form-label">Subject</label>
+      <input type="text" name="subject" class="form-control" placeholder="Runway work at KPOC">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Affected Area</label>
+      <input type="text" name="area" class="form-control" placeholder="All Ops / KPOC / SoCal">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Status</label>
+      <select name="status" class="form-select">
+        <option value="Active">Active</option>
+        <option value="Cancelled">Cancelled</option>
+      </select>
+    </div>
+    <div class="col-12">
+      <label class="form-label">Text</label>
+      <textarea name="text" rows="4" class="form-control" placeholder="Details of the restriction, dates, procedures, etc."></textarea>
+    </div>
+    <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+      <a href="{{ url_for('notams_history') }}" class="btn btn-outline-secondary">View History</a>
+      <button type="submit" class="btn btn-primary">Save NOTAM</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Cargo Manifest History</h2>
+    <a href="{{ url_for('cargo') }}" class="btn btn-primary">New Manifest</a>
+  </div>
+  {% if manifests %}
+  <div class="table-responsive">
+    <table class="table table-sm table-striped align-middle">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Date</th>
+          <th>Flight</th>
+          <th>Aircraft</th>
+          <th>From</th>
+          <th>To</th>
+          <th>Weight</th>
+          <th>Pieces</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in manifests %}
+        <tr>
+          <td>{{ m.id }}</td>
+          <td>{{ m.date }}</td>
+          <td>{{ m.flight_id }}</td>
+          <td>{{ m.aircraft }}</td>
+          <td>{{ m.departure }}</td>
+          <td>{{ m.arrival }}</td>
+          <td>{{ m.total_weight }}</td>
+          <td>{{ m.pieces }}</td>
+          <td style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ m.notes }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted">No cargo manifests saved yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

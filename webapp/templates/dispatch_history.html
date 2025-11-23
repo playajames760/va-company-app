@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Dispatch Release History</h2>
+    <a href="{{ url_for('dispatch') }}" class="btn btn-primary">New Release</a>
+  </div>
+  {% if releases %}
+  <div class="table-responsive">
+    <table class="table table-sm table-striped align-middle">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Date</th>
+          <th>Flight</th>
+          <th>Aircraft</th>
+          <th>From</th>
+          <th>To</th>
+          <th>Off-Blocks</th>
+          <th>Arrival (Z)</th>
+          <th>Route</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in releases %}
+        <tr>
+          <td>{{ d.id }}</td>
+          <td>{{ d.date }}</td>
+          <td>{{ d.flight_id }}</td>
+          <td>{{ d.aircraft }}</td>
+          <td>{{ d.departure }}</td>
+          <td>{{ d.destination }}</td>
+          <td>{{ d.offblocks }}</td>
+          <td>{{ d.arrival }}</td>
+          <td style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ d.route }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted">No dispatch releases saved yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

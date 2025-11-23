@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Company NOTAM History</h2>
+    <a href="{{ url_for('notams') }}" class="btn btn-primary">New NOTAM</a>
+  </div>
+  {% if notams %}
+  <div class="table-responsive">
+    <table class="table table-sm table-striped align-middle">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>ID</th>
+          <th>Subject</th>
+          <th>Area</th>
+          <th>Status</th>
+          <th>Text</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for n in notams %}
+        <tr>
+          <td>{{ n.id }}</td>
+          <td>{{ n.notam_id }}</td>
+          <td>{{ n.subject }}</td>
+          <td>{{ n.area }}</td>
+          <td>{{ n.status }}</td>
+          <td style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ n.text }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted">No company NOTAMs saved yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

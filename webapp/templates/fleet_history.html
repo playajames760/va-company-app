@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Fleet Overview</h2>
+    <a href="{{ url_for('fleet') }}" class="btn btn-primary">New Fleet Entry</a>
+  </div>
+  {% if entries %}
+  <div class="table-responsive">
+    <table class="table table-sm table-striped align-middle">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Type</th>
+          <th>Reg</th>
+          <th>Base</th>
+          <th>Status</th>
+          <th>MTOW (lbs)</th>
+          <th>Useful Load (lbs)</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in entries %}
+        <tr>
+          <td>{{ f.id }}</td>
+          <td>{{ f.aircraft_type }}</td>
+          <td>{{ f.registration }}</td>
+          <td>{{ f.base }}</td>
+          <td>{{ f.status }}</td>
+          <td>{{ f.max_takeoff_weight }}</td>
+          <td>{{ f.useful_load }}</td>
+          <td style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ f.notes }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted">No fleet entries saved yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

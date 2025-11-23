@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <h2 class="mb-3">Crew / Pilot Flight Log Entry</h2>
+  <form method="post" class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label">Date</label>
+      <input type="date" name="date" class="form-control">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Flight ID</label>
+      <input type="text" name="flight_id" class="form-control" placeholder="PRA123">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">From (ICAO)</label>
+      <input type="text" name="origin" class="form-control" placeholder="KPOC">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">To (ICAO)</label>
+      <input type="text" name="destination" class="form-control" placeholder="KCRQ">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Aircraft / Reg</label>
+      <input type="text" name="aircraft" class="form-control" placeholder="C172 N17PR">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Block Off (Z)</label>
+      <input type="text" name="block_off" class="form-control" placeholder="0130Z">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Block On (Z)</label>
+      <input type="text" name="block_on" class="form-control" placeholder="0235Z">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Block Time (hh:mm)</label>
+      <input type="text" name="block_time" class="form-control" placeholder="01:05">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Cargo (lbs)</label>
+      <input type="text" name="cargo_weight" class="form-control">
+    </div>
+    <div class="col-12">
+      <label class="form-label">Remarks / Route Segment</label>
+      <textarea name="remarks" rows="3" class="form-control" placeholder="Notes on weather, ATC, performance, etc."></textarea>
+    </div>
+    <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+      <a href="{{ url_for('crew_history') }}" class="btn btn-outline-secondary">View History</a>
+      <button type="submit" class="btn btn-primary">Save Log Entry</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

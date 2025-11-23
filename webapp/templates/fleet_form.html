@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <h2 class="mb-3">Fleet Entry</h2>
+  <form method="post" class="row g-3">
+    <div class="col-md-4">
+      <label class="form-label">Aircraft Type</label>
+      <input type="text" name="aircraft_type" class="form-control" placeholder="C172R">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Registration</label>
+      <input type="text" name="registration" class="form-control" placeholder="N17PR">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Base (ICAO)</label>
+      <input type="text" name="base" class="form-control" placeholder="KPOC">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Status</label>
+      <select name="status" class="form-select">
+        <option value="Active">Active</option>
+        <option value="Maintenance">Maintenance</option>
+        <option value="Stored">Stored</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Max TO Weight (lbs)</label>
+      <input type="text" name="max_takeoff_weight" class="form-control">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Useful Load (lbs)</label>
+      <input type="text" name="useful_load" class="form-control">
+    </div>
+    <div class="col-12">
+      <label class="form-label">Notes</label>
+      <textarea name="notes" rows="3" class="form-control" placeholder="Livery, special role, config, etc."></textarea>
+    </div>
+    <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+      <a href="{{ url_for('fleet_history') }}" class="btn btn-outline-secondary">View Fleet</a>
+      <button type="submit" class="btn btn-primary">Save Fleet Entry</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

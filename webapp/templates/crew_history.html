@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Crew / Pilot Flight Log History</h2>
+    <a href="{{ url_for('crew') }}" class="btn btn-primary">New Log Entry</a>
+  </div>
+  {% if logs %}
+  <div class="table-responsive">
+    <table class="table table-sm table-striped align-middle">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Date</th>
+          <th>Flight</th>
+          <th>From</th>
+          <th>To</th>
+          <th>Aircraft</th>
+          <th>Block Off</th>
+          <th>Block On</th>
+          <th>Block Time</th>
+          <th>Cargo (lbs)</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in logs %}
+        <tr>
+          <td>{{ l.id }}</td>
+          <td>{{ l.date }}</td>
+          <td>{{ l.flight_id }}</td>
+          <td>{{ l.origin }}</td>
+          <td>{{ l.destination }}</td>
+          <td>{{ l.aircraft }}</td>
+          <td>{{ l.block_off }}</td>
+          <td>{{ l.block_on }}</td>
+          <td>{{ l.block_time }}</td>
+          <td>{{ l.cargo_weight }}</td>
+          <td style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ l.remarks }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted">No crew log entries saved yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
