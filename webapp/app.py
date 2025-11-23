@@ -47,6 +47,7 @@ class DispatchRelease(db.Model):
     actual_cargo_weight = db.Column(db.String(20))  # Aggregated from linked manifests
     flight_plan_raw = db.Column(db.Text)        # Raw uploaded flight plan content (SimBrief, etc.)
     flight_plan_source = db.Column(db.String(30))  # Source identifier e.g. 'simbrief'
+    briefing_pdf_filename = db.Column(db.String(120))  # Stored PDF briefing filename (in ./briefings)
     cargo_manifests = db.relationship('CargoManifest', backref='dispatch_release', lazy='dynamic')
     fleet_entry = db.relationship('FleetEntry', lazy='joined')
 

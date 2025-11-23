@@ -113,13 +113,6 @@
     {% endif %}
   </div>
   <hr>
-  <div class="d-flex gap-2 flex-wrap">
-    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('cargo', date=d.date, flight_id=d.flight_id, aircraft=d.aircraft, departure=d.departure, arrival=d.destination, dispatch_release_id=d.id) }}">Create Cargo Manifest</a>
-    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('crew', date=d.date, flight_id=d.flight_id, origin=d.departure, destination=d.destination, aircraft=d.aircraft, dispatch_release_id=d.id) }}">Create Crew Log</a>
-    <a class="btn btn-outline-warning btn-sm" href="{{ url_for('dispatch_edit', id=d.id) }}">Edit Release</a>
-    <a class="btn btn-outline-info btn-sm" href="{{ url_for('dispatch_simbrief', id=d.id) }}" target="_blank" rel="noopener">SimBrief Prefill</a>
-  </div>
-  <hr>
   <h3 class="h6">Linked Cargo Manifests</h3>
   {% if linked_manifests %}
     <div class="table-responsive">
@@ -148,5 +141,12 @@
   {% else %}
     <p class="text-muted small mb-0">No cargo manifests linked.</p>
   {% endif %}
+  <hr>
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('cargo', date=d.date, flight_id=d.flight_id, aircraft=d.aircraft, departure=d.departure, arrival=d.destination, dispatch_release_id=d.id) }}">Create Cargo Manifest</a>
+    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('crew', date=d.date, flight_id=d.flight_id, origin=d.departure, destination=d.destination, aircraft=d.aircraft, dispatch_release_id=d.id) }}">Create Crew Log</a>
+    <a class="btn btn-outline-warning btn-sm" href="{{ url_for('dispatch_edit', id=d.id) }}">Edit Release</a>
+    <a class="btn btn-outline-info btn-sm" href="{{ url_for('dispatch_simbrief', id=d.id) }}" target="_blank" rel="noopener">SimBrief Prefill</a>
+  </div>
 </div>
 {% endblock %}
