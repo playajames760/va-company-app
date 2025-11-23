@@ -1,8 +1,9 @@
-from flask import Flask, render_template, redirect, url_for, request
+from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_sqlalchemy import SQLAlchemy
 import os
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'replace-this-with-env-secret'
 base_dir = os.path.abspath(os.path.dirname(__file__))
 db_path = os.path.join(base_dir, 'palm_route_air.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
@@ -147,6 +148,23 @@ def cargo():
             notes=request.form.get('notes'),
             dispatch_release_id=request.form.get('dispatch_release_id') or None
         )
+        # Validation
+        errors = []
+        if manifest.total_weight:
+            try:
+                float(manifest.total_weight)
+            except ValueError:
+                errors.append('Total weight must be numeric.')
+        if manifest.pieces:
+            try:
+                int(manifest.pieces)
+            except ValueError:
+                errors.append('Pieces must be an integer.')
+        if errors:
+            for e in errors:
+                flash(e, 'error')
+            defaults = {k: request.form.get(k,'') for k in ['date','flight_id','aircraft','departure','arrival','total_weight','pieces','notes','dispatch_release_id']}
+            return render_template('cargo_form.html', defaults=defaults)
         db.session.add(manifest)
         db.session.commit()
         # Auto-link if not provided by matching date + flight_id
@@ -209,6 +227,22 @@ def dispatch():
             weather_brief=request.form.get('weather_brief'),
             special_notes=request.form.get('special_notes')
         )
+        errors = []
+        if dispatch_entry.payload_planned:
+            try:
+                float(dispatch_entry.payload_planned)
+            except ValueError:
+                errors.append('Planned payload must be numeric.')
+        if dispatch_entry.fuel_planned:
+            try:
+                float(dispatch_entry.fuel_planned)
+            except ValueError:
+                errors.append('Planned fuel must be numeric.')
+        if errors:
+            for e in errors:
+                flash(e, 'error')
+            defaults = {k: request.form.get(k,'') for k in ['date','flight_id','aircraft','departure','destination','offblocks','arrival','route','payload_planned','fuel_planned','cargo_plan','alt_airports','weather_brief','special_notes']}
+            return render_template('dispatch_form.html', defaults=defaults)
         db.session.add(dispatch_entry)
         db.session.commit()
         return redirect(url_for('dispatch_history'))
@@ -243,6 +277,38 @@ def dispatch_edit(id):
                   'payload_planned','fuel_planned','cargo_plan','alt_airports','weather_brief','special_notes']
         for f in fields:
             setattr(d, f, request.form.get(f))
+        errors = []
+        if d.payload_planned:
+            try:
+                float(d.payload_planned)
+            except ValueError:
+                errors.append('Planned payload must be numeric.')
+        if d.fuel_planned:
+            try:
+                float(d.fuel_planned)
+            except ValueError:
+                errors.append('Planned fuel must be numeric.')
+        if errors:
+            for e in errors:
+                flash(e, 'error')
+            defaults = {
+                'date': d.date,
+                'flight_id': d.flight_id,
+                'aircraft': d.aircraft,
+                'departure': d.departure,
+                'destination': d.destination,
+                'offblocks': d.offblocks,
+                'arrival': d.arrival,
+                'route': d.route,
+                'payload_planned': d.payload_planned,
+                'fuel_planned': d.fuel_planned,
+                'cargo_plan': d.cargo_plan,
+                'alt_airports': d.alt_airports,
+                'weather_brief': d.weather_brief,
+                'special_notes': d.special_notes,
+                'actual_cargo_weight': d.actual_cargo_weight
+            }
+            return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id)
         db.session.commit()
         return redirect(url_for('dispatch_detail', id=d.id))
     defaults = {
@@ -399,6 +465,28 @@ def delete_fleet(id):
         db.session.delete(obj)
         db.session.commit()
     return redirect(url_for('fleet_history'))
+
+# Detail routes
+@app.route('/cargo/<int:id>')
+def cargo_detail(id):
+    m = CargoManifest.query.get_or_404(id)
+    # If linked to dispatch, optionally redirect? Keep detail view for standalone reference.
+    return render_template('cargo_detail.html', m=m)
+
+@app.route('/crew/<int:id>')
+def crew_detail(id):
+    c = CrewLog.query.get_or_404(id)
+    return render_template('crew_detail.html', c=c)
+
+@app.route('/notams/<int:id>')
+def notam_detail(id):
+    n = CompanyNotam.query.get_or_404(id)
+    return render_template('notam_detail.html', n=n)
+
+@app.route('/fleet/<int:id>')
+def fleet_detail(id):
+    f = FleetEntry.query.get_or_404(id)
+    return render_template('fleet_detail.html', f=f)
 
 
 if __name__ == '__main__':

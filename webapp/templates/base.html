@@ -21,23 +21,22 @@
             <li class="nav-item"><a class="nav-link" href="{{ url_for('crew') }}">Crew Log</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('notams') }}">Company NOTAMs</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('fleet') }}">Fleet</a></li>
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" id="helpDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Help</a>
-              <ul class="dropdown-menu" aria-labelledby="helpDropdown">
-                <li><a class="dropdown-item" href="{{ url_for('index') }}#">Workflow Overview</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('dispatch_history') }}">Dispatch History</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('cargo_history') }}">Cargo History</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('crew_history') }}">Crew Log History</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('notams_history') }}">NOTAM History</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('fleet_history') }}">Fleet Overview</a></li>
-              </ul>
-            </li>
+            <!-- Help dropdown removed per request -->
           </ul>
         </div>
       </div>
     </nav>
 
     <main class="container mb-5">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mb-3">
+            {% for category, msg in messages %}
+              <div class="alert alert-{{ 'danger' if category=='error' else category }} py-2 mb-2">{{ msg }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
       {% block content %}{% endblock %}
     </main>
 

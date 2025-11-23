@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h2 class="mb-0">Fleet Entry #{{ f.id }}</h2>
+    <a href="{{ url_for('fleet_history') }}" class="btn btn-outline-secondary btn-sm">Overview</a>
+  </div>
+  <dl class="row mb-0">
+    <dt class="col-sm-3">Registration</dt><dd class="col-sm-9">{{ f.registration }}</dd>
+    <dt class="col-sm-3">Aircraft Type</dt><dd class="col-sm-9">{{ f.aircraft_type }}</dd>
+    <dt class="col-sm-3">Base</dt><dd class="col-sm-9">{{ f.base }}</dd>
+    <dt class="col-sm-3">Status</dt><dd class="col-sm-9">{{ f.status }}</dd>
+    <dt class="col-sm-3">MTOW (lbs)</dt><dd class="col-sm-9">{{ f.max_takeoff_weight }}</dd>
+    <dt class="col-sm-3">Useful Load (lbs)</dt><dd class="col-sm-9">{{ f.useful_load }}</dd>
+    <dt class="col-sm-3">Notes</dt><dd class="col-sm-9"><pre class="small bg-light p-2 border rounded" style="white-space:pre-wrap">{{ f.notes }}</pre></dd>
+  </dl>
+</div>
+{% endblock %}

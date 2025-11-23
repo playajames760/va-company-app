@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h2 class="mb-0">Crew Log #{{ c.id }}</h2>
+    <a href="{{ url_for('crew_history') }}" class="btn btn-outline-secondary btn-sm">History</a>
+  </div>
+  {% if c.dispatch_release_id %}
+    <div class="alert alert-info small mb-3">Linked to Dispatch Release <a href="{{ url_for('dispatch_detail', id=c.dispatch_release_id) }}" class="alert-link">#{{ c.dispatch_release_id }}</a>.</div>
+  {% endif %}
+  {% if c.cargo_manifest_id %}
+    <div class="alert alert-secondary small mb-3">Related Cargo Manifest <a href="{{ url_for('cargo_detail', id=c.cargo_manifest_id) }}" class="alert-link">#{{ c.cargo_manifest_id }}</a>.</div>
+  {% endif %}
+  <dl class="row mb-0">
+    <dt class="col-sm-3">Date</dt><dd class="col-sm-9">{{ c.date }}</dd>
+    <dt class="col-sm-3">Flight ID</dt><dd class="col-sm-9">{{ c.flight_id }}</dd>
+    <dt class="col-sm-3">Origin</dt><dd class="col-sm-9">{{ c.origin }}</dd>
+    <dt class="col-sm-3">Destination</dt><dd class="col-sm-9">{{ c.destination }}</dd>
+    <dt class="col-sm-3">Aircraft</dt><dd class="col-sm-9">{{ c.aircraft }}</dd>
+    <dt class="col-sm-3">Block Off</dt><dd class="col-sm-9">{{ c.block_off }}</dd>
+    <dt class="col-sm-3">Block On</dt><dd class="col-sm-9">{{ c.block_on }}</dd>
+    <dt class="col-sm-3">Block Time</dt><dd class="col-sm-9">{{ c.block_time }}</dd>
+    <dt class="col-sm-3">Cargo Weight (lbs)</dt><dd class="col-sm-9">{{ c.cargo_weight }}</dd>
+    <dt class="col-sm-3">Remarks</dt><dd class="col-sm-9"><pre class="small bg-light p-2 border rounded" style="white-space:pre-wrap">{{ c.remarks }}</pre></dd>
+  </dl>
+</div>
+{% endblock %}
