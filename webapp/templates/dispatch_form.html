@@ -97,6 +97,37 @@
       <button type="submit" class="btn btn-primary">{% if edit_id %}Update Release{% else %}Save Release{% endif %}</button>
     </div>
   </form>
+  {% if edit_id %}
+    <hr class="mt-4" />
+    <h3 class="h6">Currently Linked Cargo Manifests</h3>
+    {% if linked_manifests %}
+      <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle mb-0">
+          <thead><tr><th>#</th><th>Date</th><th>Flight</th><th>Dep→Arr</th><th>Weight</th><th>Pieces</th><th>Actions</th></tr></thead>
+          <tbody>
+          {% for m in linked_manifests %}
+            <tr>
+              <td>{{ m.id }}</td>
+              <td>{{ m.date }}</td>
+              <td>{{ m.flight_id }}</td>
+              <td>{{ m.departure }} → {{ m.arrival }}</td>
+              <td>{{ m.total_weight }}</td>
+              <td>{{ m.pieces }}</td>
+              <td class="text-nowrap">
+                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('cargo_detail', id=m.id) }}">View/Edit</a>
+                <form method="post" action="{{ url_for('dispatch_unlink_manifest', dispatch_id=edit_id, manifest_id=m.id) }}" class="d-inline" onsubmit="return confirm('Unlink this cargo manifest?');">
+                  <button class="btn btn-danger btn-sm">Unlink</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-muted small mb-0">No cargo manifests linked to this release.</p>
+    {% endif %}
+  {% endif %}
 </div>
 <script>
  (function(){
@@ -106,12 +137,25 @@
      const aircraft = document.querySelector('input[name=aircraft]').value;
      const dep = document.querySelector('input[name=departure]').value;
      const dest = document.querySelector('input[name=destination]').value;
-     let cargoUrl = `{{ url_for('cargo') }}?date=${encodeURIComponent(date)}&flight_id=${encodeURIComponent(flight)}&aircraft=${encodeURIComponent(aircraft)}&departure=${encodeURIComponent(dep)}&arrival=${encodeURIComponent(dest)}`;
-     {% if edit_id %}cargoUrl += `&dispatch_release_id={{ edit_id }}`;{% endif %}
-     const crewUrl = `{{ url_for('crew') }}?date=${encodeURIComponent(date)}&flight_id=${encodeURIComponent(flight)}&origin=${encodeURIComponent(dep)}&destination=${encodeURIComponent(dest)}&aircraft=${encodeURIComponent(aircraft)}`;
-     {% if edit_id %}const crewUrlWithId = crewUrl + `&dispatch_release_id={{ edit_id }}`;{% endif %}
-     document.getElementById('nextCargoLink').href = cargoUrl;
-     document.getElementById('nextCrewLink').href = {% if edit_id %}crewUrlWithId{% else %}crewUrl{% endif %};
+     let cargoUrl = "{{ url_for('cargo') }}";
+     cargoUrl += '?date=' + encodeURIComponent(date);
+     cargoUrl += '&flight_id=' + encodeURIComponent(flight);
+     cargoUrl += '&aircraft=' + encodeURIComponent(aircraft);
+     cargoUrl += '&departure=' + encodeURIComponent(dep);
+     cargoUrl += '&arrival=' + encodeURIComponent(dest);
+    var dispatchId = "{{ edit_id|default('', true) }}"; // empty string if not editing
+    if(dispatchId){ cargoUrl += '&dispatch_release_id=' + dispatchId; }
+     let crewUrl = "{{ url_for('crew') }}";
+     crewUrl += '?date=' + encodeURIComponent(date);
+     crewUrl += '&flight_id=' + encodeURIComponent(flight);
+     crewUrl += '&origin=' + encodeURIComponent(dep);
+     crewUrl += '&destination=' + encodeURIComponent(dest);
+     crewUrl += '&aircraft=' + encodeURIComponent(aircraft);
+    if(dispatchId){ crewUrl += '&dispatch_release_id=' + dispatchId; }
+     const cargoLink = document.getElementById('nextCargoLink');
+     const crewLink = document.getElementById('nextCrewLink');
+     if(cargoLink) cargoLink.href = cargoUrl;
+     if(crewLink) crewLink.href = crewUrl;
    }
    document.querySelectorAll('#nextStepBox input, #nextStepBox ~ form input').forEach(el=>{
      el.addEventListener('input', buildLinks);

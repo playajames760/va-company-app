@@ -291,7 +291,8 @@ def dispatch():
 @app.route('/dispatch/<int:id>')
 def dispatch_detail(id):
     d = DispatchRelease.query.get_or_404(id)
-    return render_template('dispatch_detail.html', d=d)
+    linked_manifests = d.cargo_manifests.order_by(CargoManifest.id.desc()).all()
+    return render_template('dispatch_detail.html', d=d, linked_manifests=linked_manifests)
 
 @app.route('/dispatch/<int:id>/edit', methods=['GET', 'POST'])
 def dispatch_edit(id):
@@ -332,7 +333,8 @@ def dispatch_edit(id):
                 'special_notes': d.special_notes,
                 'actual_cargo_weight': d.actual_cargo_weight
             }
-            return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id)
+            linked_manifests = d.cargo_manifests.order_by(CargoManifest.id.desc()).all()
+            return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id, linked_manifests=linked_manifests)
         db.session.commit()
         # Optional link existing cargo manifest on edit
         cargo_manifest_id = request.form.get('cargo_manifest_id') or None
@@ -342,16 +344,16 @@ def dispatch_edit(id):
             if manifest:
                 manifest.dispatch_release_id = d.id
                 db.session.commit()
+                # Recalculate aggregated cargo weight
                 weights = []
-                for m in d.cargo_manifests.all():
+                for m2 in d.cargo_manifests.all():
                     try:
-                        weights.append(float(m.total_weight))
+                        weights.append(float(m2.total_weight))
                     except (TypeError, ValueError):
                         pass
                 total = sum(weights)
-                if weights:
-                    d.actual_cargo_weight = str(int(total)) if float(total).is_integer() else f"{total:.1f}"
-                    db.session.commit()
+                d.actual_cargo_weight = str(int(total)) if weights and float(total).is_integer() else (f"{total:.1f}" if weights else None)
+                db.session.commit()
         if create_cargo_next:
             return redirect(url_for('cargo', date=d.date, flight_id=d.flight_id,
                                     aircraft=d.aircraft, departure=d.departure,
@@ -375,7 +377,28 @@ def dispatch_edit(id):
         'actual_cargo_weight': d.actual_cargo_weight
     }
     cargo_manifest_options = CargoManifest.query.filter_by(dispatch_release_id=None).order_by(CargoManifest.id.desc()).limit(25).all()
-    return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id, cargo_manifest_options=cargo_manifest_options)
+    linked_manifests = d.cargo_manifests.order_by(CargoManifest.id.desc()).all()
+    return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id, cargo_manifest_options=cargo_manifest_options, linked_manifests=linked_manifests)
+
+@app.route('/dispatch/<int:dispatch_id>/unlink_manifest/<int:manifest_id>', methods=['POST'])
+def dispatch_unlink_manifest(dispatch_id, manifest_id):
+    d = DispatchRelease.query.get_or_404(dispatch_id)
+    m = CargoManifest.query.get_or_404(manifest_id)
+    if m.dispatch_release_id == d.id:
+        m.dispatch_release_id = None
+        db.session.commit()
+        # Recalculate aggregated cargo after unlink
+        weights = []
+        for rem in d.cargo_manifests.all():
+            try:
+                weights.append(float(rem.total_weight))
+            except (TypeError, ValueError):
+                pass
+        total = sum(weights)
+        d.actual_cargo_weight = str(int(total)) if weights and float(total).is_integer() else (f"{total:.1f}" if weights else None)
+        db.session.commit()
+        flash(f'Cargo Manifest #{manifest_id} unlinked.', 'warning')
+    return redirect(url_for('dispatch_edit', id=dispatch_id))
 
 
 @app.route('/dispatch/history')
@@ -513,12 +536,89 @@ def delete_fleet(id):
         db.session.commit()
     return redirect(url_for('fleet_history'))
 
-# Detail routes
-@app.route('/cargo/<int:id>')
+# Detail routes & editing for cargo
+@app.route('/cargo/<int:id>', methods=['GET','POST'])
 def cargo_detail(id):
     m = CargoManifest.query.get_or_404(id)
-    # If linked to dispatch, optionally redirect? Keep detail view for standalone reference.
-    return render_template('cargo_detail.html', m=m)
+    if request.method == 'POST':
+        old_dispatch_id = m.dispatch_release_id
+        m.date = request.form.get('date')
+        m.flight_id = request.form.get('flight_id')
+        m.aircraft = request.form.get('aircraft')
+        m.departure = request.form.get('departure')
+        m.arrival = request.form.get('arrival')
+        m.total_weight = request.form.get('total_weight')
+        m.pieces = request.form.get('pieces')
+        m.notes = request.form.get('notes')
+        dispatch_val = request.form.get('dispatch_release_id')
+        m.dispatch_release_id = int(dispatch_val) if dispatch_val else None
+        errors = []
+        if m.total_weight:
+            try:
+                float(m.total_weight)
+            except ValueError:
+                errors.append('Total weight must be numeric.')
+        if m.pieces:
+            try:
+                int(m.pieces)
+            except ValueError:
+                errors.append('Pieces must be an integer.')
+        if errors:
+            for e in errors:
+                flash(e,'error')
+            dispatch_options = DispatchRelease.query.order_by(DispatchRelease.id.desc()).limit(50).all()
+            return render_template('cargo_detail.html', m=m, dispatch_options=dispatch_options, editing=True)
+        db.session.commit()
+        # Recalculate cargo weights for old and new dispatch links
+        if old_dispatch_id and old_dispatch_id != m.dispatch_release_id:
+            d_old = DispatchRelease.query.get(old_dispatch_id)
+            if d_old:
+                weights = []
+                for cm in d_old.cargo_manifests.all():
+                    try:
+                        weights.append(float(cm.total_weight))
+                    except (TypeError, ValueError):
+                        pass
+                total = sum(weights)
+                d_old.actual_cargo_weight = str(int(total)) if weights and float(total).is_integer() else (f"{total:.1f}" if weights else None)
+                db.session.commit()
+        if m.dispatch_release_id:
+            d_new = DispatchRelease.query.get(m.dispatch_release_id)
+            if d_new:
+                weights = []
+                for cm in d_new.cargo_manifests.all():
+                    try:
+                        weights.append(float(cm.total_weight))
+                    except (TypeError, ValueError):
+                        pass
+                total = sum(weights)
+                d_new.actual_cargo_weight = str(int(total)) if weights and float(total).is_integer() else (f"{total:.1f}" if weights else None)
+                db.session.commit()
+        flash('Cargo manifest updated.', 'success')
+        return redirect(url_for('cargo_detail', id=m.id))
+    dispatch_options = DispatchRelease.query.order_by(DispatchRelease.id.desc()).limit(50).all()
+    return render_template('cargo_detail.html', m=m, dispatch_options=dispatch_options, editing=False)
+
+@app.route('/cargo/<int:id>/unlink_dispatch', methods=['POST'])
+def cargo_unlink_dispatch(id):
+    m = CargoManifest.query.get_or_404(id)
+    if m.dispatch_release_id:
+        old_id = m.dispatch_release_id
+        m.dispatch_release_id = None
+        db.session.commit()
+        d_old = DispatchRelease.query.get(old_id)
+        if d_old:
+            weights = []
+            for cm in d_old.cargo_manifests.all():
+                try:
+                    weights.append(float(cm.total_weight))
+                except (TypeError, ValueError):
+                    pass
+            total = sum(weights)
+            d_old.actual_cargo_weight = str(int(total)) if weights and float(total).is_integer() else (f"{total:.1f}" if weights else None)
+            db.session.commit()
+        flash('Dispatch linkage removed.', 'warning')
+    return redirect(url_for('cargo_detail', id=id))
 
 @app.route('/crew/<int:id>')
 def crew_detail(id):

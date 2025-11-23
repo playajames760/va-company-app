@@ -3,7 +3,10 @@
 <div class="p-4 bg-white rounded shadow-sm">
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h2 class="mb-0">Cargo Manifest #{{ m.id }}</h2>
-    <a href="{{ url_for('cargo_history') }}" class="btn btn-outline-secondary btn-sm">History</a>
+    <div class="btn-group btn-group-sm">
+      <a href="{{ url_for('cargo_history') }}" class="btn btn-outline-secondary">History</a>
+      <a href="#editForm" class="btn btn-outline-primary" onclick="document.getElementById('editForm').classList.toggle('d-none');return false;">{{ 'Hide Edit' if editing else 'Edit' }}</a>
+    </div>
   </div>
   {% if m.dispatch_release_id %}
     <div class="alert alert-info small mb-3">Linked to Dispatch Release <a href="{{ url_for('dispatch_detail', id=m.dispatch_release_id) }}" class="alert-link">#{{ m.dispatch_release_id }}</a>.</div>
@@ -18,9 +21,66 @@
     <dt class="col-sm-3">Pieces</dt><dd class="col-sm-9">{{ m.pieces }}</dd>
     <dt class="col-sm-3">Notes</dt><dd class="col-sm-9"><pre class="small bg-light p-2 border rounded" style="white-space:pre-wrap">{{ m.notes }}</pre></dd>
   </dl>
-  <div class="mt-3 d-flex gap-2">
+  <div class="mt-3 d-flex flex-wrap gap-2">
     <a class="btn btn-outline-primary btn-sm" href="{{ url_for('crew', date=m.date, flight_id=m.flight_id, origin=m.departure, destination=m.arrival, aircraft=m.aircraft, cargo_manifest_id=m.id, dispatch_release_id=m.dispatch_release_id) }}">Log Crew</a>
-    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('dispatch', date=m.date, flight_id=m.flight_id, aircraft=m.aircraft, departure=m.departure, destination=m.arrival) }}">Create/Edit Dispatch</a>
+    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('dispatch', date=m.date, flight_id=m.flight_id, aircraft=m.aircraft, departure=m.departure, destination=m.arrival) }}">Create Dispatch</a>
+    {% if m.dispatch_release_id %}
+      <form method="post" action="{{ url_for('cargo_unlink_dispatch', id=m.id) }}" class="d-inline" onsubmit="return confirm('Unlink dispatch release from this manifest?');">
+        <button class="btn btn-outline-warning btn-sm">Unlink Dispatch</button>
+      </form>
+    {% endif %}
+  </div>
+  <hr class="my-4">
+  <div id="editForm" class="{{ '' if editing else 'd-none' }}">
+    <h3 class="h6 mb-3">Edit Manifest</h3>
+    <form method="post" class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">Date</label>
+        <input type="date" name="date" class="form-control" value="{{ m.date }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Flight ID / Callsign</label>
+        <input type="text" name="flight_id" class="form-control" value="{{ m.flight_id }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Aircraft / Reg</label>
+        <input type="text" name="aircraft" class="form-control" value="{{ m.aircraft }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Departure (ICAO)</label>
+        <input type="text" name="departure" class="form-control" value="{{ m.departure }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Arrival (ICAO)</label>
+        <input type="text" name="arrival" class="form-control" value="{{ m.arrival }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Total Weight (lbs)</label>
+        <input type="text" name="total_weight" class="form-control" value="{{ m.total_weight }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Pieces</label>
+        <input type="text" name="pieces" class="form-control" value="{{ m.pieces }}">
+      </div>
+      <div class="col-12">
+        <label class="form-label">Notes / Cargo Breakdown</label>
+        <textarea name="notes" rows="4" class="form-control">{{ m.notes }}</textarea>
+      </div>
+      <div class="col-12">
+        <label class="form-label">Linked Dispatch Release</label>
+        <select name="dispatch_release_id" class="form-select">
+          <option value="">(None)</option>
+          {% for dopt in dispatch_options %}
+            <option value="{{ dopt.id }}" {% if m.dispatch_release_id == dopt.id %}selected{% endif %}>#{{ dopt.id }} {{ dopt.flight_id }} {{ dopt.date }} {{ dopt.departure }}→{{ dopt.destination }}</option>
+          {% endfor %}
+        </select>
+        <div class="form-text">Select a dispatch to link or choose None to unlink.</div>
+      </div>
+      <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+        <a href="{{ url_for('cargo_history') }}" class="btn btn-outline-secondary">Back to History</a>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
   </div>
 </div>
 {% endblock %}

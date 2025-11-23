@@ -67,5 +67,34 @@
     <a class="btn btn-outline-primary btn-sm" href="{{ url_for('crew', date=d.date, flight_id=d.flight_id, origin=d.departure, destination=d.destination, aircraft=d.aircraft, dispatch_release_id=d.id) }}">Create Crew Log</a>
     <a class="btn btn-outline-warning btn-sm" href="{{ url_for('dispatch_edit', id=d.id) }}">Edit Release</a>
   </div>
+  <hr>
+  <h3 class="h6">Linked Cargo Manifests</h3>
+  {% if linked_manifests %}
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle mb-0">
+        <thead><tr><th>#</th><th>Date</th><th>Flight</th><th>Dep→Arr</th><th>Weight</th><th>Pieces</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for m in linked_manifests %}
+          <tr>
+            <td>{{ m.id }}</td>
+            <td>{{ m.date }}</td>
+            <td>{{ m.flight_id }}</td>
+            <td>{{ m.departure }} → {{ m.arrival }}</td>
+            <td>{{ m.total_weight }}</td>
+            <td>{{ m.pieces }}</td>
+            <td class="text-nowrap">
+              <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('cargo_detail', id=m.id) }}">View/Edit</a>
+              <form method="post" action="{{ url_for('dispatch_unlink_manifest', dispatch_id=d.id, manifest_id=m.id) }}" class="d-inline" onsubmit="return confirm('Unlink this cargo manifest?');">
+                <button class="btn btn-danger btn-sm">Unlink</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="text-muted small mb-0">No cargo manifests linked.</p>
+  {% endif %}
 </div>
 {% endblock %}
