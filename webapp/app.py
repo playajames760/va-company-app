@@ -1,6 +1,8 @@
-from flask import Flask, render_template, redirect, url_for, request, flash
+from flask import Flask, render_template, redirect, url_for, request, flash, send_from_directory, abort
 from flask_sqlalchemy import SQLAlchemy
 import os
+import re
+import xml.etree.ElementTree as ET
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'replace-this-with-env-secret'
@@ -43,6 +45,8 @@ class DispatchRelease(db.Model):
     weather_brief = db.Column(db.Text)          # Weather summary / risks
     special_notes = db.Column(db.Text)          # Special instructions / hazards
     actual_cargo_weight = db.Column(db.String(20))  # Aggregated from linked manifests
+    flight_plan_raw = db.Column(db.Text)        # Raw uploaded flight plan content (SimBrief, etc.)
+    flight_plan_source = db.Column(db.String(30))  # Source identifier e.g. 'simbrief'
     cargo_manifests = db.relationship('CargoManifest', backref='dispatch_release', lazy='dynamic')
     fleet_entry = db.relationship('FleetEntry', lazy='joined')
 
@@ -100,7 +104,10 @@ with app.app_context():
     }
     additional_cols = {
         'actual_cargo_weight': 'TEXT',
-        'fleet_entry_id': 'INTEGER'
+        'fleet_entry_id': 'INTEGER',
+        'flight_plan_raw': 'TEXT',
+        'flight_plan_source': 'TEXT',
+        'briefing_pdf_filename': 'TEXT'
     }
     for col, ddl in new_cols.items():
         if col not in existing_cols:
@@ -119,6 +126,97 @@ with app.app_context():
     if 'fleet_entry_id' not in existing_cols:
         db.session.execute(db.text("ALTER TABLE dispatch_release ADD COLUMN fleet_entry_id INTEGER"))
         db.session.commit()
+
+
+# --- Helper Parsers -------------------------------------------------------
+def parse_pln(content: str):
+    """Parse a Microsoft Flight Simulator .pln XML string.
+
+    Returns a dict with keys:
+      route_str: Reconstructed compact route string
+      cruising_alt: Cruise altitude (string or None)
+      departure_runway: e.g. '26L'
+      arrival_runway: e.g. '29'
+      approach_type: e.g. 'RNAV'
+      waypoints: list of dicts {ident, type, airway}
+    Any missing values are None. Silently fails returning minimal dict if XML invalid.
+    """
+    data = {
+        'route_str': None,
+        'cruising_alt': None,
+        'departure_runway': None,
+        'arrival_runway': None,
+        'approach_type': None,
+        'waypoints': []
+    }
+    if not content or '<SimBase.Document' not in content:
+        return data
+    try:
+        # Some .pln files may have BOM or leading whitespace
+        root = ET.fromstring(content.strip())
+    except Exception:
+        return data
+    # Find FlightPlan node
+    fp = None
+    for child in root.iter():
+        if child.tag.endswith('FlightPlan'):
+            # Ensure we are at FlightPlan.FlightPlan level, not container
+            # The sample structure is <FlightPlan.FlightPlan>
+            fp = child
+    if fp is None:
+        return data
+    # Basic fields
+    ca = fp.find('CruisingAlt')
+    if ca is not None and ca.text:
+        data['cruising_alt'] = ca.text.strip()
+    dep_details = fp.find('DepartureDetails')
+    if dep_details is not None:
+        rn = dep_details.find('RunwayNumberFP')
+        rd = dep_details.find('RunwayDesignatorFP')
+        if rn is not None and rn.text:
+            rn_val = rn.text.strip()
+            if rd is not None and rd.text and rd.text.strip().upper() != 'NONE':
+                rn_val += rd.text.strip()[0]  # Use first letter (e.g. LEFT -> L)
+            data['departure_runway'] = rn_val
+    arr_details = fp.find('ArrivalDetails')
+    if arr_details is not None:
+        rn = arr_details.find('RunwayNumberFP')
+        if rn is not None and rn.text:
+            data['arrival_runway'] = rn.text.strip()
+    appr_details = fp.find('ApproachDetails')
+    if appr_details is not None:
+        at = appr_details.find('ApproachTypeFP')
+        if at is not None and at.text:
+            data['approach_type'] = at.text.strip()
+    # Waypoints
+    prev_airway = None
+    route_parts = []
+    for wp in fp.findall('ATCWaypoint'):
+        wptype_el = wp.find('ATCWaypointType')
+        airway_el = wp.find('ATCAirway')
+        ident_el = wp.find('./ICAO/ICAOIdent')
+        wptype = wptype_el.text.strip() if (wptype_el is not None and wptype_el.text) else None
+        airway = airway_el.text.strip() if (airway_el is not None and airway_el.text) else None
+        ident = ident_el.text.strip() if (ident_el is not None and ident_el.text) else None
+        if ident:
+            data['waypoints'].append({'ident': ident, 'type': wptype, 'airway': airway})
+            # Build route string: include airway when it changes, then ident
+            if airway and airway != prev_airway:
+                route_parts.append(airway)
+                prev_airway = airway
+            route_parts.append(ident)
+        else:
+            continue
+    if route_parts:
+        # De-duplicate consecutive identical idents (unlikely but safe)
+        compact = []
+        last = None
+        for part in route_parts:
+            if part != last:
+                compact.append(part)
+            last = part
+        data['route_str'] = ' '.join(compact)
+    return data
 
 
 
@@ -224,6 +322,39 @@ def dispatch():
             fe = FleetEntry.query.get(fleet_entry_id)
             if fe:
                 aircraft_text = f"{fe.aircraft_type} {fe.registration}"
+        fpl_file = request.files.get('fpl_file')
+        briefing_pdf = request.files.get('briefing_pdf')
+        flight_plan_raw = None
+        flight_plan_source = None
+        briefing_pdf_filename = None
+        if fpl_file and fpl_file.filename:
+            try:
+                content = fpl_file.read().decode('utf-8', errors='replace')
+            except Exception:
+                content = None
+            if content:
+                flight_plan_raw = content
+                # Detect MSFS .pln first
+                filename_lower = fpl_file.filename.lower()
+                if filename_lower.endswith('.pln') or '<SimBase.Document' in content:
+                    flight_plan_source = 'msfs-pln'
+                # Simple SimBrief detection heuristic (only override if not already msfs-pln)
+                if (flight_plan_source is None) and ('<ofp>' in content or '<plan>' in content or 'SIMBRIEF' in content.upper()):
+                    flight_plan_source = 'simbrief'
+                # Attempt route extraction if not manually provided
+                if not request.form.get('route'):
+                    route_extracted = None
+                    if flight_plan_source == 'simbrief':
+                        m_rt = re.search(r'<route_text>(.*?)</route_text>', content, re.DOTALL)
+                        if m_rt:
+                            route_extracted = m_rt.group(1).strip()
+                        else:
+                            m_line = re.search(r'ROUTE:?\s*(.+)', content)
+                            route_extracted = m_line.group(1).strip() if m_line else None
+                    elif flight_plan_source == 'msfs-pln':
+                        parsed = parse_pln(content)
+                        route_extracted = parsed.get('route_str')
+                    # Will assign after object creation if available
         dispatch_entry = DispatchRelease(
             date=request.form.get('date'),
             flight_id=request.form.get('flight_id'),
@@ -241,6 +372,39 @@ def dispatch():
             weather_brief=request.form.get('weather_brief'),
             special_notes=request.form.get('special_notes')
         )
+        if flight_plan_raw:
+            dispatch_entry.flight_plan_raw = flight_plan_raw
+            dispatch_entry.flight_plan_source = flight_plan_source
+            # If route blank, attempt extraction again (variables inside earlier block)
+            if not dispatch_entry.route:
+                if flight_plan_source == 'simbrief':
+                    m_rt = re.search(r'<route_text>(.*?)</route_text>', flight_plan_raw, re.DOTALL)
+                    if m_rt:
+                        dispatch_entry.route = m_rt.group(1).strip()
+                    else:
+                        m_line = re.search(r'ROUTE:?\s*(.+)', flight_plan_raw)
+                        if m_line:
+                            dispatch_entry.route = m_line.group(1).strip()
+                elif flight_plan_source == 'msfs-pln':
+                    parsed = parse_pln(flight_plan_raw)
+                    if parsed.get('route_str'):
+                        dispatch_entry.route = parsed['route_str']
+        # Persist now so we have an ID for PDF naming
+        db.session.add(dispatch_entry)
+        db.session.flush()  # obtain ID without full commit for naming
+        # Handle PDF upload (store in ./briefings directory)
+        if briefing_pdf and briefing_pdf.filename and briefing_pdf.filename.lower().endswith('.pdf'):
+            # Ensure directory
+            brief_dir = os.path.join(base_dir, 'briefings')
+            os.makedirs(brief_dir, exist_ok=True)
+            safe_name = f"dispatch_{dispatch_entry.id}_briefing.pdf"
+            pdf_path = os.path.join(brief_dir, safe_name)
+            try:
+                briefing_pdf.save(pdf_path)
+                briefing_pdf_filename = safe_name
+                dispatch_entry.briefing_pdf_filename = briefing_pdf_filename
+            except Exception as e:
+                flash(f'Failed to save PDF briefing: {e}', 'error')
         errors = []
         if dispatch_entry.payload_planned:
             try:
@@ -260,7 +424,6 @@ def dispatch():
             cargo_manifest_options = CargoManifest.query.filter_by(dispatch_release_id=None).order_by(CargoManifest.id.desc()).limit(25).all()
             fleet_entry_options = FleetEntry.query.order_by(FleetEntry.status.asc(), FleetEntry.registration.asc()).all()
             return render_template('dispatch_form.html', defaults=defaults, cargo_manifest_options=cargo_manifest_options, fleet_entry_options=fleet_entry_options)
-        db.session.add(dispatch_entry)
         db.session.commit()
         # Optional link existing cargo manifest
         cargo_manifest_id = request.form.get('cargo_manifest_id') or None
@@ -310,7 +473,43 @@ def dispatch():
 def dispatch_detail(id):
     d = DispatchRelease.query.get_or_404(id)
     linked_manifests = d.cargo_manifests.order_by(CargoManifest.id.desc()).all()
-    return render_template('dispatch_detail.html', d=d, linked_manifests=linked_manifests)
+    pln_data = None
+    if d.flight_plan_raw and (d.flight_plan_source == 'msfs-pln' or '<SimBase.Document' in d.flight_plan_raw):
+        pln_data = parse_pln(d.flight_plan_raw)
+    return render_template('dispatch_detail.html', d=d, linked_manifests=linked_manifests, pln=pln_data)
+
+@app.route('/dispatch/<int:id>/simbrief')
+def dispatch_simbrief(id):
+    d = DispatchRelease.query.get_or_404(id)
+    import urllib.parse
+    aircraft_type = None
+    reg = None
+    if d.aircraft:
+        parts = d.aircraft.split()
+        if len(parts) >= 2:
+            aircraft_type = parts[0]
+            reg = parts[1]
+        else:
+            aircraft_type = parts[0]
+    alt_code = None
+    if d.alt_airports:
+        # Use first token (split on comma or whitespace)
+        first = d.alt_airports.replace('\n',' ').split(',')[0].split()[0].strip()
+        if first:
+            alt_code = first
+    params = {}
+    if d.flight_id: params['callsign'] = d.flight_id
+    if d.departure: params['orig'] = d.departure
+    if d.destination: params['dest'] = d.destination
+    if alt_code: params['alternate'] = alt_code
+    if d.route: params['route'] = d.route[:1800]  # avoid overly long URL
+    if aircraft_type: params['aircraft'] = aircraft_type
+    if reg: params['reg'] = reg
+    # Optional extras (best-effort; may be ignored by SimBrief)
+    # if d.fuel_planned: params['fuel'] = d.fuel_planned
+    base_url = 'https://www.simbrief.com/system/dispatch.php'
+    url = base_url + '?' + urllib.parse.urlencode(params, doseq=True, safe='/:')
+    return redirect(url)
 
 @app.route('/dispatch/<int:id>/edit', methods=['GET', 'POST'])
 def dispatch_edit(id):
@@ -329,6 +528,46 @@ def dispatch_edit(id):
                 d.aircraft = f"{fe.aircraft_type} {fe.registration}"
         else:
             d.fleet_entry_id = None
+        # Optional new flight plan upload during edit
+        fpl_file = request.files.get('fpl_file')
+        briefing_pdf = request.files.get('briefing_pdf')
+        if fpl_file and fpl_file.filename:
+            try:
+                content = fpl_file.read().decode('utf-8', errors='replace')
+            except Exception:
+                content = None
+            if content:
+                d.flight_plan_raw = content
+                filename_lower = fpl_file.filename.lower()
+                if filename_lower.endswith('.pln') or '<SimBase.Document' in content:
+                    d.flight_plan_source = 'msfs-pln'
+                elif '<ofp>' in content or '<plan>' in content or 'SIMBRIEF' in content.upper():
+                    d.flight_plan_source = 'simbrief'
+                # If route blank after edit, attempt extraction
+                if not d.route:
+                    if d.flight_plan_source == 'simbrief':
+                        m_rt = re.search(r'<route_text>(.*?)</route_text>', content, re.DOTALL)
+                        if m_rt:
+                            d.route = m_rt.group(1).strip()
+                        else:
+                            m_line = re.search(r'ROUTE:?\s*(.+)', content)
+                            if m_line:
+                                d.route = m_line.group(1).strip()
+                    elif d.flight_plan_source == 'msfs-pln':
+                        parsed = parse_pln(content)
+                        if parsed.get('route_str'):
+                            d.route = parsed['route_str']
+        # Handle briefing PDF upload on edit (outside of flight plan block so it works independently)
+        if briefing_pdf and briefing_pdf.filename and briefing_pdf.filename.lower().endswith('.pdf'):
+            brief_dir = os.path.join(base_dir, 'briefings')
+            os.makedirs(brief_dir, exist_ok=True)
+            safe_name = f"dispatch_{d.id}_briefing.pdf"
+            pdf_path = os.path.join(brief_dir, safe_name)
+            try:
+                briefing_pdf.save(pdf_path)
+                d.briefing_pdf_filename = safe_name
+            except Exception as e:
+                flash(f'Failed to save PDF briefing: {e}', 'error')
         errors = []
         if d.payload_planned:
             try:
@@ -411,6 +650,17 @@ def dispatch_edit(id):
     linked_manifests = d.cargo_manifests.order_by(CargoManifest.id.desc()).all()
     fleet_entry_options = FleetEntry.query.order_by(FleetEntry.status.asc(), FleetEntry.registration.asc()).all()
     return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id, cargo_manifest_options=cargo_manifest_options, linked_manifests=linked_manifests, fleet_entry_options=fleet_entry_options)
+
+@app.route('/dispatch/<int:id>/briefing_pdf')
+def dispatch_briefing_pdf(id):
+    d = DispatchRelease.query.get_or_404(id)
+    if not d.briefing_pdf_filename:
+        abort(404)
+    brief_dir = os.path.join(base_dir, 'briefings')
+    file_path = os.path.join(brief_dir, d.briefing_pdf_filename)
+    if not os.path.isfile(file_path):
+        abort(404)
+    return send_from_directory(brief_dir, d.briefing_pdf_filename, mimetype='application/pdf')
 
 @app.route('/dispatch/<int:dispatch_id>/unlink_manifest/<int:manifest_id>', methods=['POST'])
 def dispatch_unlink_manifest(dispatch_id, manifest_id):

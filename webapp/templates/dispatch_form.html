@@ -14,7 +14,7 @@
       <a id="nextCrewLink" href="#">Log Crew Entry (after flight)</a>
     </span>
   </div>
-  <form method="post" class="row g-3" action="{% if edit_id %}{{ url_for('dispatch_edit', id=edit_id) }}{% else %}{{ url_for('dispatch') }}{% endif %}">
+  <form method="post" enctype="multipart/form-data" class="row g-3" action="{% if edit_id %}{{ url_for('dispatch_edit', id=edit_id) }}{% else %}{{ url_for('dispatch') }}{% endif %}">
     <div class="col-md-3">
       <label class="form-label">Date</label>
       <input type="date" name="date" class="form-control" value="{{ defaults.date }}">
@@ -53,6 +53,16 @@
     <div class="col-12">
       <label class="form-label">Route / Remarks</label>
       <textarea name="route" rows="4" class="form-control" placeholder="KPOC VFR via shoreline to KCRQ...">{{ defaults.route }}</textarea>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Upload Flight Plan (SimBrief .xml / .fpl / MSFS .pln)</label>
+      <input type="file" name="fpl_file" class="form-control" accept=".xml,.fpl,.pln,.txt">
+      <div class="form-text">If route empty we auto-extract & populate. Raw plan stored.</div>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Briefing PDF (optional)</label>
+      <input type="file" name="briefing_pdf" class="form-control" accept="application/pdf,.pdf">
+      <div class="form-text">Full briefing document (stored and viewable on detail page).</div>
     </div>
     <hr class="mt-4" />
     <div class="col-md-3">

@@ -60,12 +60,64 @@
       <div class="fw-semibold">Route / Remarks</div>
       <pre class="small bg-light p-2 border rounded" style="white-space:pre-wrap">{{ d.route }}</pre>
     </div>
+    {% if d.flight_plan_raw %}
+    <div class="col-12">
+      <div class="fw-semibold">Uploaded Flight Plan ({{ d.flight_plan_source or 'unknown' }})</div>
+      <details class="small">
+        <summary class="text-muted">Show Raw Plan Content</summary>
+        <pre class="small bg-light p-2 border rounded" style="white-space:pre-wrap; max-height:300px; overflow:auto;">{{ d.flight_plan_raw }}</pre>
+      </details>
+    </div>
+    {% endif %}
+    {% if d.briefing_pdf_filename %}
+    <div class="col-12">
+      <div class="fw-semibold">Briefing PDF</div>
+      <div class="ratio ratio-16x9 border rounded mb-2" style="height:480px;">
+        <iframe src="{{ url_for('dispatch_briefing_pdf', id=d.id) }}" title="Briefing PDF" style="width:100%;height:100%;border:0;" allowfullscreen></iframe>
+      </div>
+      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('dispatch_briefing_pdf', id=d.id) }}" target="_blank" rel="noopener">Open / Download PDF</a>
+    </div>
+    {% endif %}
+    {% if pln %}
+    <div class="col-12">
+      <div class="fw-semibold mb-1">Parsed .pln Structure</div>
+      <div class="small mb-2">
+        {% if pln.cruising_alt %}Cruise: {{ pln.cruising_alt }} ft{% else %}Cruise: —{% endif %} |
+        Dep RWY: {{ pln.departure_runway or '—' }} | Arr RWY: {{ pln.arrival_runway or '—' }} | Approach: {{ pln.approach_type or '—' }}
+      </div>
+      {% if pln.route_str %}
+        <div class="small mb-2"><span class="fw-semibold">Reconstructed Route:</span> {{ pln.route_str }}</div>
+      {% endif %}
+      {% if pln.waypoints %}
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered small mb-0">
+          <thead class="table-light">
+            <tr><th>#</th><th>Ident</th><th>Type</th><th>Airway (segment start)</th></tr>
+          </thead>
+          <tbody>
+            {% for wp in pln.waypoints %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ wp.ident }}</td>
+                <td>{{ wp.type or '—' }}</td>
+                <td>{{ wp.airway or '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        <p class="small text-muted mb-0">No waypoints parsed.</p>
+      {% endif %}
+    </div>
+    {% endif %}
   </div>
   <hr>
   <div class="d-flex gap-2 flex-wrap">
     <a class="btn btn-outline-primary btn-sm" href="{{ url_for('cargo', date=d.date, flight_id=d.flight_id, aircraft=d.aircraft, departure=d.departure, arrival=d.destination, dispatch_release_id=d.id) }}">Create Cargo Manifest</a>
     <a class="btn btn-outline-primary btn-sm" href="{{ url_for('crew', date=d.date, flight_id=d.flight_id, origin=d.departure, destination=d.destination, aircraft=d.aircraft, dispatch_release_id=d.id) }}">Create Crew Log</a>
     <a class="btn btn-outline-warning btn-sm" href="{{ url_for('dispatch_edit', id=d.id) }}">Edit Release</a>
+    <a class="btn btn-outline-info btn-sm" href="{{ url_for('dispatch_simbrief', id=d.id) }}" target="_blank" rel="noopener">SimBrief Prefill</a>
   </div>
   <hr>
   <h3 class="h6">Linked Cargo Manifests</h3>
