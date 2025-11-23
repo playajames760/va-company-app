@@ -19,6 +19,7 @@
           <th>Weight</th>
           <th>Pieces</th>
           <th>Notes</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -33,6 +34,13 @@
           <td>{{ m.total_weight }}</td>
           <td>{{ m.pieces }}</td>
           <td style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ m.notes }}</td>
+          <td class="text-nowrap">
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('dispatch', date=m.date, flight_id=m.flight_id, aircraft=m.aircraft, departure=m.departure, destination=m.arrival) }}">Dispatch</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('crew', date=m.date, flight_id=m.flight_id, origin=m.departure, destination=m.arrival, aircraft=m.aircraft, cargo_manifest_id=m.id) }}">Crew Log</a>
+            <form action="{{ url_for('delete_cargo', id=m.id) }}" method="post" class="d-inline">
+              <button class="btn btn-danger btn-sm" onclick="return confirm('Delete this cargo manifest?')">Delete</button>
+            </form>
+          </td>
         </tr>
         {% endfor %}
       </tbody>

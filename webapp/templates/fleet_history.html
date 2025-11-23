@@ -18,6 +18,7 @@
           <th>MTOW (lbs)</th>
           <th>Useful Load (lbs)</th>
           <th>Notes</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -31,6 +32,11 @@
           <td>{{ f.max_takeoff_weight }}</td>
           <td>{{ f.useful_load }}</td>
           <td style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ f.notes }}</td>
+          <td class="text-nowrap">
+            <form action="{{ url_for('delete_fleet', id=f.id) }}" method="post" class="d-inline">
+              <button class="btn btn-danger btn-sm" onclick="return confirm('Delete this fleet entry?')">Delete</button>
+            </form>
+          </td>
         </tr>
         {% endfor %}
       </tbody>

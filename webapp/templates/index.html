@@ -1,14 +1,126 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="p-4 bg-white rounded shadow-sm">
-  <h1 class="mb-3">Palm Route Air – Operations Console</h1>
-  <p class="text-muted">Click a module in the navigation bar to create and track forms:</p>
-  <ul>
-    <li>Cargo Manifests</li>
-    <li>Dispatch Releases</li>
-    <li>Crew Logs</li>
-    <li>Company NOTAMs</li>
-    <li>Fleet Management</li>
-  </ul>
+<div class="mb-4 p-4 bg-white rounded shadow-sm">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h1 class="h3 mb-0">Palm Route Air – Operations Console</h1>
+    <div class="btn-group btn-group-sm" role="group">
+      <a class="btn btn-outline-primary" href="{{ url_for('cargo_history') }}">Cargo History</a>
+      <a class="btn btn-outline-primary" href="{{ url_for('dispatch_history') }}">Dispatch History</a>
+      <a class="btn btn-outline-primary" href="{{ url_for('crew_history') }}">Crew History</a>
+      <a class="btn btn-outline-primary" href="{{ url_for('notams_history') }}">NOTAM History</a>
+      <a class="btn btn-outline-primary" href="{{ url_for('fleet_history') }}">Fleet Overview</a>
+    </div>
+  </div>
+  <p class="text-muted mb-3">Quick snapshot of current operational data. Use the navigation or buttons to manage records.</p>
+  <div class="row g-3">
+    <div class="col-sm-6 col-md-4 col-lg-2">
+      <div class="border rounded p-2 text-center bg-light">
+        <div class="fw-bold">Cargo</div>
+        <div class="display-6 fs-2">{{ counts.cargo_manifests }}</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-md-4 col-lg-2">
+      <div class="border rounded p-2 text-center bg-light">
+        <div class="fw-bold">Dispatch</div>
+        <div class="display-6 fs-2">{{ counts.dispatch_releases }}</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-md-4 col-lg-2">
+      <div class="border rounded p-2 text-center bg-light">
+        <div class="fw-bold">Crew Logs</div>
+        <div class="display-6 fs-2">{{ counts.crew_logs }}</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-md-4 col-lg-2">
+      <div class="border rounded p-2 text-center bg-light">
+        <div class="fw-bold">NOTAMs</div>
+        <div class="display-6 fs-2">{{ counts.company_notams }}</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-md-4 col-lg-2">
+      <div class="border rounded p-2 text-center bg-light">
+        <div class="fw-bold">Fleet</div>
+        <div class="display-6 fs-2">{{ counts.fleet_entries }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="bg-white rounded shadow-sm p-3">
+      <h2 class="h5">Recent Cargo Manifests</h2>
+      <table class="table table-sm table-striped mb-0">
+        <thead><tr><th>Date</th><th>Flight</th><th>Aircraft</th><th>Weight</th></tr></thead>
+        <tbody>
+        {% for m in manifests %}
+          <tr><td>{{ m.date }}</td><td>{{ m.flight_id }}</td><td>{{ m.aircraft }}</td><td>{{ m.total_weight }}</td></tr>
+        {% else %}
+          <tr><td colspan="4" class="text-muted">No manifests.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="bg-white rounded shadow-sm p-3">
+      <h2 class="h5">Recent Dispatch Releases</h2>
+      <table class="table table-sm table-striped mb-0">
+        <thead><tr><th>Date</th><th>Flight</th><th>Aircraft</th><th>Route</th></tr></thead>
+        <tbody>
+        {% for d in releases %}
+          <tr><td>{{ d.date }}</td><td>{{ d.flight_id }}</td><td>{{ d.aircraft }}</td><td>{{ d.route[:20] }}{% if d.route|length > 20 %}…{% endif %}</td></tr>
+        {% else %}
+          <tr><td colspan="4" class="text-muted">No releases.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="bg-white rounded shadow-sm p-3">
+      <h2 class="h5">Recent Crew Logs</h2>
+      <table class="table table-sm table-striped mb-0">
+        <thead><tr><th>Date</th><th>Flight</th><th>Aircraft</th><th>Block Time</th></tr></thead>
+        <tbody>
+        {% for c in logs %}
+          <tr><td>{{ c.date }}</td><td>{{ c.flight_id }}</td><td>{{ c.aircraft }}</td><td>{{ c.block_time }}</td></tr>
+        {% else %}
+          <tr><td colspan="4" class="text-muted">No crew logs.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="bg-white rounded shadow-sm p-3">
+      <h2 class="h5">Recent Company NOTAMs</h2>
+      <table class="table table-sm table-striped mb-0">
+        <thead><tr><th>ID</th><th>Subject</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for n in notams %}
+          <tr><td>{{ n.notam_id }}</td><td>{{ n.subject }}</td><td>{{ n.status }}</td></tr>
+        {% else %}
+          <tr><td colspan="3" class="text-muted">No NOTAMs.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="bg-white rounded shadow-sm p-3">
+      <h2 class="h5">Fleet</h2>
+      <table class="table table-sm table-striped mb-0">
+        <thead><tr><th>Registration</th><th>Type</th><th>Base</th><th>Status</th><th>MTOW</th><th>Useful Load</th></tr></thead>
+        <tbody>
+        {% for f in fleet_entries %}
+          <tr><td>{{ f.registration }}</td><td>{{ f.aircraft_type }}</td><td>{{ f.base }}</td><td>{{ f.status }}</td><td>{{ f.max_takeoff_weight }}</td><td>{{ f.useful_load }}</td></tr>
+        {% else %}
+          <tr><td colspan="6" class="text-muted">No fleet entries.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 {% endblock %}

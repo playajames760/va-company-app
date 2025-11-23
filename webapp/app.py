@@ -47,6 +47,10 @@ class CrewLog(db.Model):
     block_time = db.Column(db.String(10))
     cargo_weight = db.Column(db.String(20))
     remarks = db.Column(db.Text)
+    dispatch_release_id = db.Column(db.Integer, db.ForeignKey('dispatch_release.id'))
+    cargo_manifest_id = db.Column(db.Integer, db.ForeignKey('cargo_manifest.id'))
+    dispatch_release = db.relationship('DispatchRelease', lazy='joined')
+    cargo_manifest = db.relationship('CargoManifest', lazy='joined')
 
 
 class CompanyNotam(db.Model):
@@ -73,8 +77,11 @@ with app.app_context():
     db.create_all()
 
 
-@app.route('/dashboard')
-def dashboard():
+
+
+
+@app.route('/')
+def index():
     manifests = CargoManifest.query.order_by(CargoManifest.id.desc()).limit(5).all()
     releases = DispatchRelease.query.order_by(DispatchRelease.id.desc()).limit(5).all()
     logs = CrewLog.query.order_by(CrewLog.id.desc()).limit(5).all()
@@ -87,19 +94,13 @@ def dashboard():
         'company_notams': CompanyNotam.query.count(),
         'fleet_entries': FleetEntry.query.count()
     }
-    return render_template('dashboard.html',
+    return render_template('index.html',
                            counts=counts,
                            manifests=manifests,
                            releases=releases,
                            logs=logs,
                            notams=notams,
                            fleet_entries=fleet_entries)
-
-
-
-@app.route('/')
-def index():
-    return render_template('index.html')
 
 
 @app.route('/cargo', methods=['GET', 'POST'])
@@ -118,7 +119,17 @@ def cargo():
         db.session.add(manifest)
         db.session.commit()
         return redirect(url_for('cargo_history'))
-    return render_template('cargo_form.html')
+    defaults = {
+        'date': request.args.get('date', ''),
+        'flight_id': request.args.get('flight_id', ''),
+        'aircraft': request.args.get('aircraft', ''),
+        'departure': request.args.get('departure', ''),
+        'arrival': request.args.get('arrival', ''),
+        'total_weight': request.args.get('total_weight', ''),
+        'pieces': request.args.get('pieces', ''),
+        'notes': request.args.get('notes', '')
+    }
+    return render_template('cargo_form.html', defaults=defaults)
 
 
 @app.route('/cargo/history')
@@ -143,7 +154,17 @@ def dispatch():
         db.session.add(dispatch_entry)
         db.session.commit()
         return redirect(url_for('dispatch_history'))
-    return render_template('dispatch_form.html')
+    defaults = {
+        'date': request.args.get('date', ''),
+        'flight_id': request.args.get('flight_id', ''),
+        'aircraft': request.args.get('aircraft', ''),
+        'departure': request.args.get('departure', ''),
+        'destination': request.args.get('destination', ''),
+        'offblocks': request.args.get('offblocks', ''),
+        'arrival': request.args.get('arrival', ''),
+        'route': request.args.get('route', '')
+    }
+    return render_template('dispatch_form.html', defaults=defaults)
 
 
 @app.route('/dispatch/history')
@@ -165,12 +186,28 @@ def crew():
             block_on=request.form.get('block_on'),
             block_time=request.form.get('block_time'),
             cargo_weight=request.form.get('cargo_weight'),
-            remarks=request.form.get('remarks')
+            remarks=request.form.get('remarks'),
+            dispatch_release_id=request.form.get('dispatch_release_id') or None,
+            cargo_manifest_id=request.form.get('cargo_manifest_id') or None
         )
         db.session.add(log)
         db.session.commit()
         return redirect(url_for('crew_history'))
-    return render_template('crew_form.html')
+    defaults = {
+        'date': request.args.get('date', ''),
+        'flight_id': request.args.get('flight_id', ''),
+        'origin': request.args.get('origin', ''),
+        'destination': request.args.get('destination', ''),
+        'aircraft': request.args.get('aircraft', ''),
+        'block_off': request.args.get('block_off', ''),
+        'block_on': request.args.get('block_on', ''),
+        'block_time': request.args.get('block_time', ''),
+        'cargo_weight': request.args.get('cargo_weight', ''),
+        'remarks': request.args.get('remarks', ''),
+        'dispatch_release_id': request.args.get('dispatch_release_id', ''),
+        'cargo_manifest_id': request.args.get('cargo_manifest_id', '')
+    }
+    return render_template('crew_form.html', defaults=defaults)
 
 
 @app.route('/crew/history')
@@ -223,6 +260,47 @@ def fleet():
 def fleet_history():
     entries = FleetEntry.query.order_by(FleetEntry.id.desc()).all()
     return render_template('fleet_history.html', entries=entries)
+
+# Delete routes (POST only)
+@app.route('/cargo/delete/<int:id>', methods=['POST'])
+def delete_cargo(id):
+    obj = CargoManifest.query.get(id)
+    if obj:
+        db.session.delete(obj)
+        db.session.commit()
+    return redirect(url_for('cargo_history'))
+
+@app.route('/dispatch/delete/<int:id>', methods=['POST'])
+def delete_dispatch(id):
+    obj = DispatchRelease.query.get(id)
+    if obj:
+        db.session.delete(obj)
+        db.session.commit()
+    return redirect(url_for('dispatch_history'))
+
+@app.route('/crew/delete/<int:id>', methods=['POST'])
+def delete_crew(id):
+    obj = CrewLog.query.get(id)
+    if obj:
+        db.session.delete(obj)
+        db.session.commit()
+    return redirect(url_for('crew_history'))
+
+@app.route('/notams/delete/<int:id>', methods=['POST'])
+def delete_notam(id):
+    obj = CompanyNotam.query.get(id)
+    if obj:
+        db.session.delete(obj)
+        db.session.commit()
+    return redirect(url_for('notams_history'))
+
+@app.route('/fleet/delete/<int:id>', methods=['POST'])
+def delete_fleet(id):
+    obj = FleetEntry.query.get(id)
+    if obj:
+        db.session.delete(obj)
+        db.session.commit()
+    return redirect(url_for('fleet_history'))
 
 
 if __name__ == '__main__':

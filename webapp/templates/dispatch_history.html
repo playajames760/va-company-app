@@ -19,6 +19,7 @@
           <th>Off-Blocks</th>
           <th>Arrival (Z)</th>
           <th>Route</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -33,6 +34,13 @@
           <td>{{ d.offblocks }}</td>
           <td>{{ d.arrival }}</td>
           <td style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ d.route }}</td>
+          <td class="text-nowrap">
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('cargo', date=d.date, flight_id=d.flight_id, aircraft=d.aircraft, departure=d.departure, arrival=d.destination) }}">Cargo</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('crew', date=d.date, flight_id=d.flight_id, origin=d.departure, destination=d.destination, aircraft=d.aircraft, dispatch_release_id=d.id) }}">Crew Log</a>
+            <form action="{{ url_for('delete_dispatch', id=d.id) }}" method="post" class="d-inline">
+              <button class="btn btn-danger btn-sm" onclick="return confirm('Delete this dispatch release?')">Delete</button>
+            </form>
+          </td>
         </tr>
         {% endfor %}
       </tbody>

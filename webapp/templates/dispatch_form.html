@@ -2,38 +2,39 @@
 {% block content %}
 <div class="p-4 bg-white rounded shadow-sm">
   <h2 class="mb-3">Dispatch Release</h2>
+  <p class="text-muted small">Issue the operational release for an upcoming flight. Enter planned times in Zulu (UTC), confirm departure and destination ICAO codes, and provide a concise route/remarks (include altitude, routing fixes, or VFR notes). Complete this prior to off-blocks; update with amendments by creating a new release if major changes occur.</p>
   <form method="post" class="row g-3">
     <div class="col-md-3">
       <label class="form-label">Date</label>
-      <input type="date" name="date" class="form-control">
+      <input type="date" name="date" class="form-control" value="{{ defaults.date }}">
     </div>
     <div class="col-md-3">
       <label class="form-label">Flight ID / Callsign</label>
-      <input type="text" name="flight_id" class="form-control" placeholder="PRA123">
+      <input type="text" name="flight_id" class="form-control" placeholder="PRA123" value="{{ defaults.flight_id }}">
     </div>
     <div class="col-md-3">
       <label class="form-label">Aircraft / Reg</label>
-      <input type="text" name="aircraft" class="form-control" placeholder="C172 N17PR">
+      <input type="text" name="aircraft" class="form-control" placeholder="C172 N17PR" value="{{ defaults.aircraft }}">
     </div>
     <div class="col-md-3">
       <label class="form-label">Departure (ICAO)</label>
-      <input type="text" name="departure" class="form-control" placeholder="KPOC">
+      <input type="text" name="departure" class="form-control" placeholder="KPOC" value="{{ defaults.departure }}">
     </div>
     <div class="col-md-3">
       <label class="form-label">Destination (ICAO)</label>
-      <input type="text" name="destination" class="form-control" placeholder="KCRQ">
+      <input type="text" name="destination" class="form-control" placeholder="KCRQ" value="{{ defaults.destination }}">
     </div>
     <div class="col-md-3">
       <label class="form-label">Planned Off-Blocks (Z)</label>
-      <input type="text" name="offblocks" class="form-control" placeholder="0130Z">
+      <input type="text" name="offblocks" class="form-control" placeholder="0130Z" value="{{ defaults.offblocks }}">
     </div>
     <div class="col-md-3">
       <label class="form-label">Planned Arrival (Z)</label>
-      <input type="text" name="arrival" class="form-control" placeholder="0230Z">
+      <input type="text" name="arrival" class="form-control" placeholder="0230Z" value="{{ defaults.arrival }}">
     </div>
     <div class="col-12">
       <label class="form-label">Route / Remarks</label>
-      <textarea name="route" rows="4" class="form-control" placeholder="KPOC VFR via shoreline to KCRQ..."></textarea>
+      <textarea name="route" rows="4" class="form-control" placeholder="KPOC VFR via shoreline to KCRQ...">{{ defaults.route }}</textarea>
     </div>
     <div class="col-12 d-flex justify-content-between align-items-center mt-3">
       <a href="{{ url_for('dispatch_history') }}" class="btn btn-outline-secondary">View History</a>

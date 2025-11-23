@@ -2,46 +2,60 @@
 {% block content %}
 <div class="p-4 bg-white rounded shadow-sm">
   <h2 class="mb-3">Crew / Pilot Flight Log Entry</h2>
+  <p class="text-muted small">Capture actual operational results for a completed leg. Use UTC/Z for block off/on times, calculate block time in hh:mm, and record cargo carried on this segment (not total day). Remarks should briefly note weather, ATC issues, safety items, or route variations. Complete immediately after shutdown while details are fresh.</p>
   <form method="post" class="row g-3">
     <div class="col-md-3">
       <label class="form-label">Date</label>
-      <input type="date" name="date" class="form-control">
+      <input type="date" name="date" class="form-control" value="{{ defaults.date }}">
     </div>
     <div class="col-md-3">
       <label class="form-label">Flight ID</label>
-      <input type="text" name="flight_id" class="form-control" placeholder="PRA123">
+      <input type="text" name="flight_id" class="form-control" placeholder="PRA123" value="{{ defaults.flight_id }}">
     </div>
     <div class="col-md-3">
       <label class="form-label">From (ICAO)</label>
-      <input type="text" name="origin" class="form-control" placeholder="KPOC">
+      <input type="text" name="origin" class="form-control" placeholder="KPOC" value="{{ defaults.origin }}">
     </div>
     <div class="col-md-3">
       <label class="form-label">To (ICAO)</label>
-      <input type="text" name="destination" class="form-control" placeholder="KCRQ">
+      <input type="text" name="destination" class="form-control" placeholder="KCRQ" value="{{ defaults.destination }}">
     </div>
     <div class="col-md-3">
       <label class="form-label">Aircraft / Reg</label>
-      <input type="text" name="aircraft" class="form-control" placeholder="C172 N17PR">
+      <input type="text" name="aircraft" class="form-control" placeholder="C172 N17PR" value="{{ defaults.aircraft }}">
     </div>
     <div class="col-md-3">
       <label class="form-label">Block Off (Z)</label>
-      <input type="text" name="block_off" class="form-control" placeholder="0130Z">
+      <input type="text" name="block_off" class="form-control" placeholder="0130Z" value="{{ defaults.block_off }}">
     </div>
     <div class="col-md-3">
       <label class="form-label">Block On (Z)</label>
-      <input type="text" name="block_on" class="form-control" placeholder="0235Z">
+      <input type="text" name="block_on" class="form-control" placeholder="0235Z" value="{{ defaults.block_on }}">
     </div>
     <div class="col-md-3">
       <label class="form-label">Block Time (hh:mm)</label>
-      <input type="text" name="block_time" class="form-control" placeholder="01:05">
+      <input type="text" name="block_time" class="form-control" placeholder="01:05" value="{{ defaults.block_time }}">
     </div>
     <div class="col-md-3">
       <label class="form-label">Cargo (lbs)</label>
-      <input type="text" name="cargo_weight" class="form-control">
+      <input type="text" name="cargo_weight" class="form-control" value="{{ defaults.cargo_weight }}">
     </div>
     <div class="col-12">
       <label class="form-label">Remarks / Route Segment</label>
-      <textarea name="remarks" rows="3" class="form-control" placeholder="Notes on weather, ATC, performance, etc."></textarea>
+      <textarea name="remarks" rows="3" class="form-control" placeholder="Notes on weather, ATC, performance, etc.">{{ defaults.remarks }}</textarea>
+    </div>
+    {% if defaults.dispatch_release_id or defaults.cargo_manifest_id %}
+    <div class="col-12">
+      <div class="alert alert-info py-2 mb-0 small">
+        Linked:
+        {% if defaults.dispatch_release_id %} Dispatch Release #{{ defaults.dispatch_release_id }}{% endif %}
+        {% if defaults.dispatch_release_id and defaults.cargo_manifest_id %} | {% endif %}
+        {% if defaults.cargo_manifest_id %} Cargo Manifest #{{ defaults.cargo_manifest_id }}{% endif %}
+      </div>
+    </div>
+    {% endif %}
+    <input type="hidden" name="dispatch_release_id" value="{{ defaults.dispatch_release_id }}">
+    <input type="hidden" name="cargo_manifest_id" value="{{ defaults.cargo_manifest_id }}">
     </div>
     <div class="col-12 d-flex justify-content-between align-items-center mt-3">
       <a href="{{ url_for('crew_history') }}" class="btn btn-outline-secondary">View History</a>
