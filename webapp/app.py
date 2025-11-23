@@ -245,7 +245,30 @@ def dispatch():
             return render_template('dispatch_form.html', defaults=defaults)
         db.session.add(dispatch_entry)
         db.session.commit()
-        return redirect(url_for('dispatch_history'))
+        # Optional link existing cargo manifest
+        cargo_manifest_id = request.form.get('cargo_manifest_id') or None
+        create_cargo_next = request.form.get('create_cargo_next') == 'on'
+        if cargo_manifest_id:
+            manifest = CargoManifest.query.get(cargo_manifest_id)
+            if manifest:
+                manifest.dispatch_release_id = dispatch_entry.id
+                db.session.commit()
+                # Recalculate actual cargo weight
+                weights = []
+                for m in dispatch_entry.cargo_manifests.all():
+                    try:
+                        weights.append(float(m.total_weight))
+                    except (TypeError, ValueError):
+                        pass
+                total = sum(weights)
+                if weights:
+                    dispatch_entry.actual_cargo_weight = str(int(total)) if float(total).is_integer() else f"{total:.1f}"
+                    db.session.commit()
+        if create_cargo_next:
+            return redirect(url_for('cargo', date=dispatch_entry.date, flight_id=dispatch_entry.flight_id,
+                                    aircraft=dispatch_entry.aircraft, departure=dispatch_entry.departure,
+                                    arrival=dispatch_entry.destination, dispatch_release_id=dispatch_entry.id))
+        return redirect(url_for('dispatch_detail', id=dispatch_entry.id))
     defaults = {
         'date': request.args.get('date', ''),
         'flight_id': request.args.get('flight_id', ''),
@@ -262,7 +285,8 @@ def dispatch():
         'weather_brief': request.args.get('weather_brief', ''),
         'special_notes': request.args.get('special_notes', '')
     }
-    return render_template('dispatch_form.html', defaults=defaults)
+    cargo_manifest_options = CargoManifest.query.filter_by(dispatch_release_id=None).order_by(CargoManifest.id.desc()).limit(25).all()
+    return render_template('dispatch_form.html', defaults=defaults, cargo_manifest_options=cargo_manifest_options)
 
 @app.route('/dispatch/<int:id>')
 def dispatch_detail(id):
@@ -310,6 +334,28 @@ def dispatch_edit(id):
             }
             return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id)
         db.session.commit()
+        # Optional link existing cargo manifest on edit
+        cargo_manifest_id = request.form.get('cargo_manifest_id') or None
+        create_cargo_next = request.form.get('create_cargo_next') == 'on'
+        if cargo_manifest_id:
+            manifest = CargoManifest.query.get(cargo_manifest_id)
+            if manifest:
+                manifest.dispatch_release_id = d.id
+                db.session.commit()
+                weights = []
+                for m in d.cargo_manifests.all():
+                    try:
+                        weights.append(float(m.total_weight))
+                    except (TypeError, ValueError):
+                        pass
+                total = sum(weights)
+                if weights:
+                    d.actual_cargo_weight = str(int(total)) if float(total).is_integer() else f"{total:.1f}"
+                    db.session.commit()
+        if create_cargo_next:
+            return redirect(url_for('cargo', date=d.date, flight_id=d.flight_id,
+                                    aircraft=d.aircraft, departure=d.departure,
+                                    arrival=d.destination, dispatch_release_id=d.id))
         return redirect(url_for('dispatch_detail', id=d.id))
     defaults = {
         'date': d.date,
@@ -328,7 +374,8 @@ def dispatch_edit(id):
         'special_notes': d.special_notes,
         'actual_cargo_weight': d.actual_cargo_weight
     }
-    return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id)
+    cargo_manifest_options = CargoManifest.query.filter_by(dispatch_release_id=None).order_by(CargoManifest.id.desc()).limit(25).all()
+    return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id, cargo_manifest_options=cargo_manifest_options)
 
 
 @app.route('/dispatch/history')
