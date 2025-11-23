@@ -3,6 +3,10 @@
 <div class="p-4 bg-white rounded shadow-sm">
   <h2 class="mb-3">Company NOTAM</h2>
   <p class="text-muted small">Publish internal operational notices (NOT for public ATC). Use a unique NOTAM ID (e.g. PRA-NOTAM-###). Subject should be concise; Area defines scope (airport, region, or "All Ops"). Status toggles between Active and Cancelled. In the Text field include purpose, effective dates/times (UTC), impacted procedures, and any required crew actions.</p>
+  {% include '_flow_help.html' %}
+  <div class="alert alert-secondary small mb-3">
+    <strong>When to Issue:</strong> Facility limitations, procedural changes, training restrictions, local hazards, or temporary operational notes. <strong>Dissemination:</strong> Dispatch references active NOTAMs during flight planning. <strong>Lifecycle:</strong> Replace or cancel as soon as conditions change to avoid stale guidance.
+  </div>
   <form method="post" class="row g-3">
     <div class="col-md-3">
       <label class="form-label">NOTAM ID</label>

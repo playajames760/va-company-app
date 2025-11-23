@@ -3,6 +3,12 @@
 <div class="p-4 bg-white rounded shadow-sm">
   <h2 class="mb-3">Cargo Manifest</h2>
   <p class="text-muted small">Record the cargo carried on a specific flight. Include accurate departure/arrival ICAO codes, aircraft registration, total loaded weight, number of discrete pieces, and any handling or security notes in the breakdown. Use this form before departure; update notes if last-minute changes occur.</p>
+  {% include '_flow_help.html' %}
+  <div class="alert alert-secondary small" id="cargoNextBox">
+    <strong>Next Steps:</strong>
+    <span><a id="toDispatchLink" href="#">Create Dispatch Release</a></span> |
+    <span><a id="toCrewLink" href="#">Log Crew Entry (post-flight)</a></span>
+  </div>
   <form method="post" class="row g-3">
     <div class="col-md-3">
       <label class="form-label">Date</label>
@@ -42,4 +48,21 @@
     </div>
   </form>
 </div>
+<script>
+ (function(){
+   function buildLinks(){
+     const date = document.querySelector('input[name=date]').value;
+     const flight = document.querySelector('input[name=flight_id]').value;
+     const aircraft = document.querySelector('input[name=aircraft]').value;
+     const dep = document.querySelector('input[name=departure]').value;
+     const arr = document.querySelector('input[name=arrival]').value;
+     const dispatchUrl = `{{ url_for('dispatch') }}?date=${encodeURIComponent(date)}&flight_id=${encodeURIComponent(flight)}&aircraft=${encodeURIComponent(aircraft)}&departure=${encodeURIComponent(dep)}&destination=${encodeURIComponent(arr)}`;
+     const crewUrl = `{{ url_for('crew') }}?date=${encodeURIComponent(date)}&flight_id=${encodeURIComponent(flight)}&origin=${encodeURIComponent(dep)}&destination=${encodeURIComponent(arr)}&aircraft=${encodeURIComponent(aircraft)}`;
+     document.getElementById('toDispatchLink').href = dispatchUrl;
+     document.getElementById('toCrewLink').href = crewUrl;
+   }
+   document.querySelectorAll('form input').forEach(el=>el.addEventListener('input', buildLinks));
+   buildLinks();
+ })();
+</script>
 {% endblock %}

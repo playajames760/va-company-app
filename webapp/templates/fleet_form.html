@@ -3,6 +3,10 @@
 <div class="p-4 bg-white rounded shadow-sm">
   <h2 class="mb-3">Fleet Entry</h2>
   <p class="text-muted small">Maintain master data for each airframe. Use exact type designator and registration formatting. Status reflects current operational availability. Max takeoff and useful load values should match the specific aircraft configuration (POH + installed equipment). Notes may include livery, avionics, maintenance due items, or role (training, charter, cargo). Update entries when configuration or status changes.</p>
+  {% include '_flow_help.html' %}
+  <div class="alert alert-secondary small mb-3">
+    <strong>When to Update:</strong> After maintenance status changes, equipment installs/removals, base relocation, or role reassignment. <strong>Tip:</strong> Keep fleet data current so Dispatch and Cargo planning reflect available capacity.
+  </div>
   <form method="post" class="row g-3">
     <div class="col-md-4">
       <label class="form-label">Aircraft Type</label>

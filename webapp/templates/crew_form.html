@@ -3,6 +3,14 @@
 <div class="p-4 bg-white rounded shadow-sm">
   <h2 class="mb-3">Crew / Pilot Flight Log Entry</h2>
   <p class="text-muted small">Capture actual operational results for a completed leg. Use UTC/Z for block off/on times, calculate block time in hh:mm, and record cargo carried on this segment (not total day). Remarks should briefly note weather, ATC issues, safety items, or route variations. Complete immediately after shutdown while details are fresh.</p>
+  {% include '_flow_help.html' %}
+  <div class="alert alert-secondary small mb-3" id="crewGuideBox">
+    <strong>Before Flight:</strong> Ensure a Dispatch Release exists. <strong>After Loading:</strong> Record any cargo in its manifest. <strong>Now:</strong> Enter actual times and conditions. Use the dynamic links below to review or create related forms.
+    <div class="mt-1">
+      <a id="crewToDispatch" href="#">Dispatch Release</a> |
+      <a id="crewToCargo" href="#">Cargo Manifest</a>
+    </div>
+  </div>
   <form method="post" class="row g-3">
     <div class="col-md-3">
       <label class="form-label">Date</label>
@@ -63,4 +71,21 @@
     </div>
   </form>
 </div>
+<script>
+ (function(){
+   function buildLinks(){
+     const date = document.querySelector('input[name=date]').value;
+     const flight = document.querySelector('input[name=flight_id]').value;
+     const aircraft = document.querySelector('input[name=aircraft]').value;
+     const origin = document.querySelector('input[name=origin]').value;
+     const destination = document.querySelector('input[name=destination]').value;
+     const dispatchUrl = `{{ url_for('dispatch') }}?date=${encodeURIComponent(date)}&flight_id=${encodeURIComponent(flight)}&aircraft=${encodeURIComponent(aircraft)}&departure=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
+     const cargoUrl = `{{ url_for('cargo') }}?date=${encodeURIComponent(date)}&flight_id=${encodeURIComponent(flight)}&aircraft=${encodeURIComponent(aircraft)}&departure=${encodeURIComponent(origin)}&arrival=${encodeURIComponent(destination)}`;
+     document.getElementById('crewToDispatch').href = dispatchUrl;
+     document.getElementById('crewToCargo').href = cargoUrl;
+   }
+   document.querySelectorAll('form input').forEach(el=>el.addEventListener('input', buildLinks));
+   buildLinks();
+ })();
+</script>
 {% endblock %}
