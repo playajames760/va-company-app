@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="p-4 bg-white rounded shadow-sm">
-  <h2 class="mb-3">Dispatch Release</h2>
+  <h2 class="mb-3">Dispatch Release {% if edit_id %}Edit{% endif %}</h2>
   <p class="text-muted small">Issue the operational release for an upcoming flight. Enter planned times in Zulu (UTC), confirm departure and destination ICAO codes, and provide a concise route/remarks (include altitude, routing fixes, or VFR notes). Complete this prior to off-blocks; update with amendments by creating a new release if major changes occur.</p>
   {% include '_flow_help.html' %}
   <div class="alert alert-secondary small" id="nextStepBox">
@@ -14,7 +14,7 @@
       <a id="nextCrewLink" href="#">Log Crew Entry (after flight)</a>
     </span>
   </div>
-  <form method="post" class="row g-3">
+  <form method="post" class="row g-3" action="{% if edit_id %}{{ url_for('dispatch_edit', id=edit_id) }}{% else %}{{ url_for('dispatch') }}{% endif %}">
     <div class="col-md-3">
       <label class="form-label">Date</label>
       <input type="date" name="date" class="form-control" value="{{ defaults.date }}">
@@ -51,6 +51,7 @@
     <div class="col-md-3">
       <label class="form-label">Planned Payload (lbs)</label>
       <input type="text" name="payload_planned" class="form-control" value="{{ defaults.payload_planned }}">
+      {% if edit_id and defaults.actual_cargo_weight %}<div class="form-text">Actual loaded: {{ defaults.actual_cargo_weight }} lbs</div>{% endif %}
     </div>
     <div class="col-md-3">
       <label class="form-label">Planned Fuel (gal/lbs)</label>
@@ -74,7 +75,7 @@
     </div>
     <div class="col-12 d-flex justify-content-between align-items-center mt-3">
       <a href="{{ url_for('dispatch_history') }}" class="btn btn-outline-secondary">View History</a>
-      <button type="submit" class="btn btn-primary">Save Release</button>
+      <button type="submit" class="btn btn-primary">{% if edit_id %}Update Release{% else %}Save Release{% endif %}</button>
     </div>
   </form>
 </div>
@@ -86,10 +87,12 @@
      const aircraft = document.querySelector('input[name=aircraft]').value;
      const dep = document.querySelector('input[name=departure]').value;
      const dest = document.querySelector('input[name=destination]').value;
-     const cargoUrl = `{{ url_for('cargo') }}?date=${encodeURIComponent(date)}&flight_id=${encodeURIComponent(flight)}&aircraft=${encodeURIComponent(aircraft)}&departure=${encodeURIComponent(dep)}&arrival=${encodeURIComponent(dest)}`;
+     let cargoUrl = `{{ url_for('cargo') }}?date=${encodeURIComponent(date)}&flight_id=${encodeURIComponent(flight)}&aircraft=${encodeURIComponent(aircraft)}&departure=${encodeURIComponent(dep)}&arrival=${encodeURIComponent(dest)}`;
+     {% if edit_id %}cargoUrl += `&dispatch_release_id={{ edit_id }}`;{% endif %}
      const crewUrl = `{{ url_for('crew') }}?date=${encodeURIComponent(date)}&flight_id=${encodeURIComponent(flight)}&origin=${encodeURIComponent(dep)}&destination=${encodeURIComponent(dest)}&aircraft=${encodeURIComponent(aircraft)}`;
+     {% if edit_id %}const crewUrlWithId = crewUrl + `&dispatch_release_id={{ edit_id }}`;{% endif %}
      document.getElementById('nextCargoLink').href = cargoUrl;
-     document.getElementById('nextCrewLink').href = crewUrl;
+     document.getElementById('nextCrewLink').href = {% if edit_id %}crewUrlWithId{% else %}crewUrl{% endif %};
    }
    document.querySelectorAll('#nextStepBox input, #nextStepBox ~ form input').forEach(el=>{
      el.addEventListener('input', buildLinks);

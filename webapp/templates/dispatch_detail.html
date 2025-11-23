@@ -34,6 +34,7 @@
     <div class="col-md-3">
       <div class="fw-semibold">Payload Planned (lbs)</div>
       <div>{{ d.payload_planned or '—' }}</div>
+      {% if d.actual_cargo_weight %}<div class="small text-muted">Actual Cargo: {{ d.actual_cargo_weight }} lbs</div>{% endif %}
     </div>
     <div class="col-md-3">
       <div class="fw-semibold">Fuel Planned</div>
@@ -62,9 +63,9 @@
   </div>
   <hr>
   <div class="d-flex gap-2 flex-wrap">
-    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('cargo', date=d.date, flight_id=d.flight_id, aircraft=d.aircraft, departure=d.departure, arrival=d.destination) }}">Create Cargo Manifest</a>
+    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('cargo', date=d.date, flight_id=d.flight_id, aircraft=d.aircraft, departure=d.departure, arrival=d.destination, dispatch_release_id=d.id) }}">Create Cargo Manifest</a>
     <a class="btn btn-outline-primary btn-sm" href="{{ url_for('crew', date=d.date, flight_id=d.flight_id, origin=d.departure, destination=d.destination, aircraft=d.aircraft, dispatch_release_id=d.id) }}">Create Crew Log</a>
-    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('dispatch', date=d.date, flight_id=d.flight_id, aircraft=d.aircraft, departure=d.departure, destination=d.destination, route=d.route) }}">New Revision</a>
+    <a class="btn btn-outline-warning btn-sm" href="{{ url_for('dispatch_edit', id=d.id) }}">Edit Release</a>
   </div>
 </div>
 {% endblock %}

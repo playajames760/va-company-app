@@ -21,6 +21,7 @@ class CargoManifest(db.Model):
     total_weight = db.Column(db.String(20))
     pieces = db.Column(db.String(10))
     notes = db.Column(db.Text)
+    dispatch_release_id = db.Column(db.Integer, db.ForeignKey('dispatch_release.id'))
 
 
 class DispatchRelease(db.Model):
@@ -39,6 +40,8 @@ class DispatchRelease(db.Model):
     alt_airports = db.Column(db.Text)           # Alternate airports list
     weather_brief = db.Column(db.Text)          # Weather summary / risks
     special_notes = db.Column(db.Text)          # Special instructions / hazards
+    actual_cargo_weight = db.Column(db.String(20))  # Aggregated from linked manifests
+    cargo_manifests = db.relationship('CargoManifest', backref='dispatch_release', lazy='dynamic')
 
 
 class CrewLog(db.Model):
@@ -92,10 +95,22 @@ with app.app_context():
         'weather_brief': 'TEXT',
         'special_notes': 'TEXT'
     }
+    additional_cols = {
+        'actual_cargo_weight': 'TEXT'
+    }
     for col, ddl in new_cols.items():
         if col not in existing_cols:
             db.session.execute(db.text(f"ALTER TABLE dispatch_release ADD COLUMN {col} {ddl}"))
+    for col, ddl in additional_cols.items():
+        if col not in existing_cols:
+            db.session.execute(db.text(f"ALTER TABLE dispatch_release ADD COLUMN {col} {ddl}"))
     db.session.commit()
+    # Ensure cargo_manifest has dispatch_release_id
+    insp_cargo = db.session.execute(db.text("PRAGMA table_info(cargo_manifest)")).fetchall()
+    cargo_cols = {row[1] for row in insp_cargo}
+    if 'dispatch_release_id' not in cargo_cols:
+        db.session.execute(db.text("ALTER TABLE cargo_manifest ADD COLUMN dispatch_release_id INTEGER"))
+        db.session.commit()
 
 
 
@@ -115,13 +130,7 @@ def index():
         'company_notams': CompanyNotam.query.count(),
         'fleet_entries': FleetEntry.query.count()
     }
-    return render_template('index.html',
-                           counts=counts,
-                           manifests=manifests,
-                           releases=releases,
-                           logs=logs,
-                           notams=notams,
-                           fleet_entries=fleet_entries)
+    return render_template('index.html', manifests=manifests, releases=releases, logs=logs, notams=notams, fleet_entries=fleet_entries, counts=counts)
 
 
 @app.route('/cargo', methods=['GET', 'POST'])
@@ -135,10 +144,31 @@ def cargo():
             arrival=request.form.get('arrival'),
             total_weight=request.form.get('total_weight'),
             pieces=request.form.get('pieces'),
-            notes=request.form.get('notes')
+            notes=request.form.get('notes'),
+            dispatch_release_id=request.form.get('dispatch_release_id') or None
         )
         db.session.add(manifest)
         db.session.commit()
+        # Auto-link if not provided by matching date + flight_id
+        if manifest.dispatch_release_id is None:
+            match = DispatchRelease.query.filter_by(date=manifest.date, flight_id=manifest.flight_id).first()
+            if match:
+                manifest.dispatch_release_id = match.id
+                db.session.commit()
+        # Update aggregated cargo weight on linked dispatch
+        if manifest.dispatch_release_id:
+            dr = DispatchRelease.query.get(manifest.dispatch_release_id)
+            if dr:
+                weights = []
+                for m in dr.cargo_manifests.all():
+                    try:
+                        weights.append(float(m.total_weight))
+                    except (TypeError, ValueError):
+                        pass
+                total = sum(weights)
+                if weights:
+                    dr.actual_cargo_weight = str(int(total)) if float(total).is_integer() else f"{total:.1f}"
+                    db.session.commit()
         return redirect(url_for('cargo_history'))
     defaults = {
         'date': request.args.get('date', ''),
@@ -148,7 +178,8 @@ def cargo():
         'arrival': request.args.get('arrival', ''),
         'total_weight': request.args.get('total_weight', ''),
         'pieces': request.args.get('pieces', ''),
-        'notes': request.args.get('notes', '')
+        'notes': request.args.get('notes', ''),
+        'dispatch_release_id': request.args.get('dispatch_release_id', '')
     }
     return render_template('cargo_form.html', defaults=defaults)
 
@@ -203,6 +234,35 @@ def dispatch():
 def dispatch_detail(id):
     d = DispatchRelease.query.get_or_404(id)
     return render_template('dispatch_detail.html', d=d)
+
+@app.route('/dispatch/<int:id>/edit', methods=['GET', 'POST'])
+def dispatch_edit(id):
+    d = DispatchRelease.query.get_or_404(id)
+    if request.method == 'POST':
+        fields = ['date','flight_id','aircraft','departure','destination','offblocks','arrival','route',
+                  'payload_planned','fuel_planned','cargo_plan','alt_airports','weather_brief','special_notes']
+        for f in fields:
+            setattr(d, f, request.form.get(f))
+        db.session.commit()
+        return redirect(url_for('dispatch_detail', id=d.id))
+    defaults = {
+        'date': d.date,
+        'flight_id': d.flight_id,
+        'aircraft': d.aircraft,
+        'departure': d.departure,
+        'destination': d.destination,
+        'offblocks': d.offblocks,
+        'arrival': d.arrival,
+        'route': d.route,
+        'payload_planned': d.payload_planned,
+        'fuel_planned': d.fuel_planned,
+        'cargo_plan': d.cargo_plan,
+        'alt_airports': d.alt_airports,
+        'weather_brief': d.weather_brief,
+        'special_notes': d.special_notes,
+        'actual_cargo_weight': d.actual_cargo_weight
+    }
+    return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id)
 
 
 @app.route('/dispatch/history')
