@@ -15,12 +15,11 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav">
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Dashboard</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('cargo') }}">Cargo Manifest</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('dispatch') }}">Dispatch Release</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('crew') }}">Crew Log</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('notams') }}">Company NOTAMs</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('fleet') }}">Fleet</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('cargo_history') }}">Cargo</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('dispatch_history') }}">Dispatch</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('crew_history') }}">Crew Logs</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('notams_history') }}">Company NOTAMs</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('fleet_history') }}">Fleet</a></li>
             <!-- Help dropdown removed per request -->
           </ul>
         </div>
