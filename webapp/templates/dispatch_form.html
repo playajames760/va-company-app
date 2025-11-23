@@ -24,8 +24,15 @@
       <input type="text" name="flight_id" class="form-control" placeholder="PRA123" value="{{ defaults.flight_id }}">
     </div>
     <div class="col-md-3">
-      <label class="form-label">Aircraft / Reg</label>
-      <input type="text" name="aircraft" class="form-control" placeholder="C172 N17PR" value="{{ defaults.aircraft }}">
+      <label class="form-label">Aircraft (Fleet)</label>
+      <select name="fleet_entry_id" class="form-select" id="fleetSelect">
+        <option value="">-- Select Aircraft --</option>
+        {% for fe in fleet_entry_options %}
+          <option value="{{ fe.id }}" data-aircraft="{{ fe.aircraft_type }} {{ fe.registration }}" {% if fe.id|string == defaults.fleet_entry_id|string %}selected{% endif %}>{{ fe.aircraft_type }} {{ fe.registration }} ({{ fe.status }})</option>
+        {% endfor %}
+      </select>
+      <input type="hidden" name="aircraft" id="aircraftHidden" value="{{ defaults.aircraft }}">
+      <div class="form-text">Selecting sets aircraft field automatically.</div>
     </div>
     <div class="col-md-3">
       <label class="form-label">Departure (ICAO)</label>
@@ -134,7 +141,7 @@
    function buildLinks(){
      const date = document.querySelector('input[name=date]').value;
      const flight = document.querySelector('input[name=flight_id]').value;
-     const aircraft = document.querySelector('input[name=aircraft]').value;
+    const aircraft = document.getElementById('aircraftHidden').value;
      const dep = document.querySelector('input[name=departure]').value;
      const dest = document.querySelector('input[name=destination]').value;
      let cargoUrl = "{{ url_for('cargo') }}";
@@ -157,10 +164,27 @@
      if(cargoLink) cargoLink.href = cargoUrl;
      if(crewLink) crewLink.href = crewUrl;
    }
+   function syncAircraft(){
+     const sel = document.getElementById('fleetSelect');
+     if (!sel) return;
+     const opt = sel.options[sel.selectedIndex];
+     if (opt && opt.dataset.aircraft){
+       document.getElementById('aircraftHidden').value = opt.dataset.aircraft;
+     } else if (!sel.value) {
+       document.getElementById('aircraftHidden').value = '';
+     }
+     buildLinks();
+   }
    document.querySelectorAll('#nextStepBox input, #nextStepBox ~ form input').forEach(el=>{
      el.addEventListener('input', buildLinks);
    });
-   buildLinks();
+   const fleetSel = document.getElementById('fleetSelect');
+   if (fleetSel){
+     fleetSel.addEventListener('change', syncAircraft);
+     syncAircraft();
+   } else {
+     buildLinks();
+   }
  })();
 </script>
 {% endblock %}

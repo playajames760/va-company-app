@@ -30,6 +30,7 @@ class DispatchRelease(db.Model):
     date = db.Column(db.String(20))
     flight_id = db.Column(db.String(20))
     aircraft = db.Column(db.String(50))
+    fleet_entry_id = db.Column(db.Integer, db.ForeignKey('fleet_entry.id'))
     departure = db.Column(db.String(10))
     destination = db.Column(db.String(10))
     offblocks = db.Column(db.String(10))
@@ -43,6 +44,7 @@ class DispatchRelease(db.Model):
     special_notes = db.Column(db.Text)          # Special instructions / hazards
     actual_cargo_weight = db.Column(db.String(20))  # Aggregated from linked manifests
     cargo_manifests = db.relationship('CargoManifest', backref='dispatch_release', lazy='dynamic')
+    fleet_entry = db.relationship('FleetEntry', lazy='joined')
 
 
 class CrewLog(db.Model):
@@ -97,7 +99,8 @@ with app.app_context():
         'special_notes': 'TEXT'
     }
     additional_cols = {
-        'actual_cargo_weight': 'TEXT'
+        'actual_cargo_weight': 'TEXT',
+        'fleet_entry_id': 'INTEGER'
     }
     for col, ddl in new_cols.items():
         if col not in existing_cols:
@@ -111,6 +114,10 @@ with app.app_context():
     cargo_cols = {row[1] for row in insp_cargo}
     if 'dispatch_release_id' not in cargo_cols:
         db.session.execute(db.text("ALTER TABLE cargo_manifest ADD COLUMN dispatch_release_id INTEGER"))
+        db.session.commit()
+    # Ensure fleet_entry_id column exists on dispatch_release
+    if 'fleet_entry_id' not in existing_cols:
+        db.session.execute(db.text("ALTER TABLE dispatch_release ADD COLUMN fleet_entry_id INTEGER"))
         db.session.commit()
 
 
@@ -211,10 +218,17 @@ def cargo_history():
 @app.route('/dispatch', methods=['GET', 'POST'])
 def dispatch():
     if request.method == 'POST':
+        fleet_entry_id = request.form.get('fleet_entry_id') or None
+        aircraft_text = request.form.get('aircraft')  # fallback hidden field
+        if fleet_entry_id:
+            fe = FleetEntry.query.get(fleet_entry_id)
+            if fe:
+                aircraft_text = f"{fe.aircraft_type} {fe.registration}"
         dispatch_entry = DispatchRelease(
             date=request.form.get('date'),
             flight_id=request.form.get('flight_id'),
-            aircraft=request.form.get('aircraft'),
+            aircraft=aircraft_text,
+            fleet_entry_id=fleet_entry_id,
             departure=request.form.get('departure'),
             destination=request.form.get('destination'),
             offblocks=request.form.get('offblocks'),
@@ -241,8 +255,11 @@ def dispatch():
         if errors:
             for e in errors:
                 flash(e, 'error')
-            defaults = {k: request.form.get(k,'') for k in ['date','flight_id','aircraft','departure','destination','offblocks','arrival','route','payload_planned','fuel_planned','cargo_plan','alt_airports','weather_brief','special_notes']}
-            return render_template('dispatch_form.html', defaults=defaults)
+            defaults = {k: request.form.get(k,'') for k in ['date','flight_id','departure','destination','offblocks','arrival','route','payload_planned','fuel_planned','cargo_plan','alt_airports','weather_brief','special_notes']}
+            defaults['fleet_entry_id'] = fleet_entry_id or ''
+            cargo_manifest_options = CargoManifest.query.filter_by(dispatch_release_id=None).order_by(CargoManifest.id.desc()).limit(25).all()
+            fleet_entry_options = FleetEntry.query.order_by(FleetEntry.status.asc(), FleetEntry.registration.asc()).all()
+            return render_template('dispatch_form.html', defaults=defaults, cargo_manifest_options=cargo_manifest_options, fleet_entry_options=fleet_entry_options)
         db.session.add(dispatch_entry)
         db.session.commit()
         # Optional link existing cargo manifest
@@ -272,7 +289,7 @@ def dispatch():
     defaults = {
         'date': request.args.get('date', ''),
         'flight_id': request.args.get('flight_id', ''),
-        'aircraft': request.args.get('aircraft', ''),
+        'fleet_entry_id': request.args.get('fleet_entry_id', ''),
         'departure': request.args.get('departure', ''),
         'destination': request.args.get('destination', ''),
         'offblocks': request.args.get('offblocks', ''),
@@ -286,7 +303,8 @@ def dispatch():
         'special_notes': request.args.get('special_notes', '')
     }
     cargo_manifest_options = CargoManifest.query.filter_by(dispatch_release_id=None).order_by(CargoManifest.id.desc()).limit(25).all()
-    return render_template('dispatch_form.html', defaults=defaults, cargo_manifest_options=cargo_manifest_options)
+    fleet_entry_options = FleetEntry.query.order_by(FleetEntry.status.asc(), FleetEntry.registration.asc()).all()
+    return render_template('dispatch_form.html', defaults=defaults, cargo_manifest_options=cargo_manifest_options, fleet_entry_options=fleet_entry_options)
 
 @app.route('/dispatch/<int:id>')
 def dispatch_detail(id):
@@ -302,6 +320,15 @@ def dispatch_edit(id):
                   'payload_planned','fuel_planned','cargo_plan','alt_airports','weather_brief','special_notes']
         for f in fields:
             setattr(d, f, request.form.get(f))
+        # fleet selection
+        fleet_entry_id = request.form.get('fleet_entry_id') or None
+        if fleet_entry_id:
+            fe = FleetEntry.query.get(fleet_entry_id)
+            if fe:
+                d.fleet_entry_id = fe.id
+                d.aircraft = f"{fe.aircraft_type} {fe.registration}"
+        else:
+            d.fleet_entry_id = None
         errors = []
         if d.payload_planned:
             try:
@@ -320,6 +347,7 @@ def dispatch_edit(id):
                 'date': d.date,
                 'flight_id': d.flight_id,
                 'aircraft': d.aircraft,
+                'fleet_entry_id': d.fleet_entry_id or '',
                 'departure': d.departure,
                 'destination': d.destination,
                 'offblocks': d.offblocks,
@@ -334,7 +362,9 @@ def dispatch_edit(id):
                 'actual_cargo_weight': d.actual_cargo_weight
             }
             linked_manifests = d.cargo_manifests.order_by(CargoManifest.id.desc()).all()
-            return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id, linked_manifests=linked_manifests)
+            cargo_manifest_options = CargoManifest.query.filter_by(dispatch_release_id=None).order_by(CargoManifest.id.desc()).limit(25).all()
+            fleet_entry_options = FleetEntry.query.order_by(FleetEntry.status.asc(), FleetEntry.registration.asc()).all()
+            return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id, linked_manifests=linked_manifests, cargo_manifest_options=cargo_manifest_options, fleet_entry_options=fleet_entry_options)
         db.session.commit()
         # Optional link existing cargo manifest on edit
         cargo_manifest_id = request.form.get('cargo_manifest_id') or None
@@ -363,6 +393,7 @@ def dispatch_edit(id):
         'date': d.date,
         'flight_id': d.flight_id,
         'aircraft': d.aircraft,
+        'fleet_entry_id': d.fleet_entry_id or '',
         'departure': d.departure,
         'destination': d.destination,
         'offblocks': d.offblocks,
@@ -378,7 +409,8 @@ def dispatch_edit(id):
     }
     cargo_manifest_options = CargoManifest.query.filter_by(dispatch_release_id=None).order_by(CargoManifest.id.desc()).limit(25).all()
     linked_manifests = d.cargo_manifests.order_by(CargoManifest.id.desc()).all()
-    return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id, cargo_manifest_options=cargo_manifest_options, linked_manifests=linked_manifests)
+    fleet_entry_options = FleetEntry.query.order_by(FleetEntry.status.asc(), FleetEntry.registration.asc()).all()
+    return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id, cargo_manifest_options=cargo_manifest_options, linked_manifests=linked_manifests, fleet_entry_options=fleet_entry_options)
 
 @app.route('/dispatch/<int:dispatch_id>/unlink_manifest/<int:manifest_id>', methods=['POST'])
 def dispatch_unlink_manifest(dispatch_id, manifest_id):
@@ -484,10 +516,39 @@ def fleet():
             useful_load=request.form.get('useful_load'),
             notes=request.form.get('notes')
         )
+        errors = []
+        for field in ['max_takeoff_weight','useful_load']:
+            val = getattr(entry, field)
+            if val:
+                try:
+                    float(val)
+                except ValueError:
+                    errors.append(f"{field.replace('_',' ').title()} must be numeric.")
+        if errors:
+            for e in errors:
+                flash(e, 'error')
+            return render_template('fleet_form.html', defaults={
+                'aircraft_type': entry.aircraft_type,
+                'registration': entry.registration,
+                'base': entry.base,
+                'status': entry.status,
+                'max_takeoff_weight': entry.max_takeoff_weight,
+                'useful_load': entry.useful_load,
+                'notes': entry.notes
+            })
         db.session.add(entry)
         db.session.commit()
         return redirect(url_for('fleet_history'))
-    return render_template('fleet_form.html')
+    defaults = {
+        'aircraft_type': request.args.get('aircraft_type',''),
+        'registration': request.args.get('registration',''),
+        'base': request.args.get('base',''),
+        'status': request.args.get('status','Active'),
+        'max_takeoff_weight': request.args.get('max_takeoff_weight',''),
+        'useful_load': request.args.get('useful_load',''),
+        'notes': request.args.get('notes','')
+    }
+    return render_template('fleet_form.html', defaults=defaults)
 
 
 @app.route('/fleet/history')
@@ -535,6 +596,39 @@ def delete_fleet(id):
         db.session.delete(obj)
         db.session.commit()
     return redirect(url_for('fleet_history'))
+
+@app.route('/fleet/<int:id>/edit', methods=['GET','POST'])
+def fleet_edit(id):
+    f = FleetEntry.query.get_or_404(id)
+    if request.method == 'POST':
+        fields = ['aircraft_type','registration','base','status','max_takeoff_weight','useful_load','notes']
+        for fld in fields:
+            setattr(f, fld, request.form.get(fld))
+        errors = []
+        for numeric in ['max_takeoff_weight','useful_load']:
+            val = getattr(f, numeric)
+            if val:
+                try:
+                    float(val)
+                except ValueError:
+                    errors.append(f"{numeric.replace('_',' ').title()} must be numeric.")
+        if errors:
+            for e in errors:
+                flash(e, 'error')
+            defaults_err = {fld: getattr(f, fld) for fld in fields}
+            return render_template('fleet_form.html', defaults=defaults_err, edit_id=f.id)
+        db.session.commit()
+        return redirect(url_for('fleet_detail', id=f.id))
+    defaults = {
+        'aircraft_type': f.aircraft_type,
+        'registration': f.registration,
+        'base': f.base,
+        'status': f.status,
+        'max_takeoff_weight': f.max_takeoff_weight,
+        'useful_load': f.useful_load,
+        'notes': f.notes
+    }
+    return render_template('fleet_form.html', defaults=defaults, edit_id=f.id)
 
 # Detail routes & editing for cargo
 @app.route('/cargo/<int:id>', methods=['GET','POST'])
@@ -597,7 +691,8 @@ def cargo_detail(id):
         flash('Cargo manifest updated.', 'success')
         return redirect(url_for('cargo_detail', id=m.id))
     dispatch_options = DispatchRelease.query.order_by(DispatchRelease.id.desc()).limit(50).all()
-    return render_template('cargo_detail.html', m=m, dispatch_options=dispatch_options, editing=False)
+    editing_flag = True if request.args.get('edit') == '1' else False
+    return render_template('cargo_detail.html', m=m, dispatch_options=dispatch_options, editing=editing_flag)
 
 @app.route('/cargo/<int:id>/unlink_dispatch', methods=['POST'])
 def cargo_unlink_dispatch(id):

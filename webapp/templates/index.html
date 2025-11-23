@@ -1,15 +1,8 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="mb-4 p-4 bg-white rounded shadow-sm">
-  <div class="d-flex justify-content-between align-items-center mb-2">
+  <div class="mb-2">
     <h1 class="h3 mb-0">Palm Route Air – Operations Console</h1>
-    <div class="btn-group btn-group-sm" role="group">
-      <a class="btn btn-outline-primary" href="{{ url_for('cargo_history') }}">Cargo History</a>
-      <a class="btn btn-outline-primary" href="{{ url_for('dispatch_history') }}">Dispatch History</a>
-      <a class="btn btn-outline-primary" href="{{ url_for('crew_history') }}">Crew History</a>
-      <a class="btn btn-outline-primary" href="{{ url_for('notams_history') }}">NOTAM History</a>
-      <a class="btn btn-outline-primary" href="{{ url_for('fleet_history') }}">Fleet Overview</a>
-    </div>
   </div>
   <p class="text-muted mb-3">Quick snapshot of current operational data. Use the navigation or buttons to manage records.</p>
   {% include '_flow_help.html' %}

@@ -33,6 +33,8 @@
           <td>{{ f.useful_load }}</td>
           <td style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ f.notes }}</td>
           <td class="text-nowrap">
+            <a class="btn btn-outline-primary btn-sm" href="{{ url_for('fleet_detail', id=f.id) }}">View</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('fleet_edit', id=f.id) }}">Edit</a>
             <form action="{{ url_for('delete_fleet', id=f.id) }}" method="post" class="d-inline">
               <button class="btn btn-danger btn-sm" onclick="return confirm('Delete this fleet entry?')">Delete</button>
             </form>

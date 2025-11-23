@@ -1,48 +1,48 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="p-4 bg-white rounded shadow-sm">
-  <h2 class="mb-3">Fleet Entry</h2>
+  <h2 class="mb-3">Fleet Entry {% if edit_id %}Edit{% endif %}</h2>
   <p class="text-muted small">Maintain master data for each airframe. Use exact type designator and registration formatting. Status reflects current operational availability. Max takeoff and useful load values should match the specific aircraft configuration (POH + installed equipment). Notes may include livery, avionics, maintenance due items, or role (training, charter, cargo). Update entries when configuration or status changes.</p>
   {% include '_flow_help.html' %}
   <div class="alert alert-secondary small mb-3">
     <strong>When to Update:</strong> After maintenance status changes, equipment installs/removals, base relocation, or role reassignment. <strong>Tip:</strong> Keep fleet data current so Dispatch and Cargo planning reflect available capacity.
   </div>
-  <form method="post" class="row g-3">
+  <form method="post" class="row g-3" action="{% if edit_id %}{{ url_for('fleet_edit', id=edit_id) }}{% else %}{{ url_for('fleet') }}{% endif %}">
     <div class="col-md-4">
       <label class="form-label">Aircraft Type</label>
-      <input type="text" name="aircraft_type" class="form-control" placeholder="C172R">
+      <input type="text" name="aircraft_type" class="form-control" placeholder="C172R" value="{{ defaults.aircraft_type }}">
     </div>
     <div class="col-md-4">
       <label class="form-label">Registration</label>
-      <input type="text" name="registration" class="form-control" placeholder="N17PR">
+      <input type="text" name="registration" class="form-control" placeholder="N17PR" value="{{ defaults.registration }}">
     </div>
     <div class="col-md-4">
       <label class="form-label">Base (ICAO)</label>
-      <input type="text" name="base" class="form-control" placeholder="KPOC">
+      <input type="text" name="base" class="form-control" placeholder="KPOC" value="{{ defaults.base }}">
     </div>
     <div class="col-md-4">
       <label class="form-label">Status</label>
       <select name="status" class="form-select">
-        <option value="Active">Active</option>
-        <option value="Maintenance">Maintenance</option>
-        <option value="Stored">Stored</option>
+        {% for s in ['Active','Maintenance','Stored'] %}
+          <option value="{{ s }}" {% if s == defaults.status %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
       </select>
     </div>
     <div class="col-md-4">
       <label class="form-label">Max TO Weight (lbs)</label>
-      <input type="text" name="max_takeoff_weight" class="form-control">
+      <input type="text" name="max_takeoff_weight" class="form-control" value="{{ defaults.max_takeoff_weight }}">
     </div>
     <div class="col-md-4">
       <label class="form-label">Useful Load (lbs)</label>
-      <input type="text" name="useful_load" class="form-control">
+      <input type="text" name="useful_load" class="form-control" value="{{ defaults.useful_load }}">
     </div>
     <div class="col-12">
       <label class="form-label">Notes</label>
-      <textarea name="notes" rows="3" class="form-control" placeholder="Livery, special role, config, etc."></textarea>
+      <textarea name="notes" rows="3" class="form-control" placeholder="Livery, special role, config, etc.">{{ defaults.notes }}</textarea>
     </div>
     <div class="col-12 d-flex justify-content-between align-items-center mt-3">
       <a href="{{ url_for('fleet_history') }}" class="btn btn-outline-secondary">View Fleet</a>
-      <button type="submit" class="btn btn-primary">Save Fleet Entry</button>
+      <button type="submit" class="btn btn-primary">{% if edit_id %}Update Fleet Entry{% else %}Save Fleet Entry{% endif %}</button>
     </div>
   </form>
 </div>
