@@ -47,6 +47,31 @@
       <label class="form-label">Route / Remarks</label>
       <textarea name="route" rows="4" class="form-control" placeholder="KPOC VFR via shoreline to KCRQ...">{{ defaults.route }}</textarea>
     </div>
+    <hr class="mt-4" />
+    <div class="col-md-3">
+      <label class="form-label">Planned Payload (lbs)</label>
+      <input type="text" name="payload_planned" class="form-control" value="{{ defaults.payload_planned }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Planned Fuel (gal/lbs)</label>
+      <input type="text" name="fuel_planned" class="form-control" value="{{ defaults.fuel_planned }}">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Alternate Airports</label>
+      <textarea name="alt_airports" rows="2" class="form-control" placeholder="e.g. KOKB, KSNA">{{ defaults.alt_airports }}</textarea>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Cargo Plan / Items</label>
+      <textarea name="cargo_plan" rows="3" class="form-control" placeholder="Summary of expected cargo items">{{ defaults.cargo_plan }}</textarea>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Weather Brief (summary)</label>
+      <textarea name="weather_brief" rows="3" class="form-control" placeholder="Winds, ceilings, visibility, hazards">{{ defaults.weather_brief }}</textarea>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Special Notes / Instructions</label>
+      <textarea name="special_notes" rows="3" class="form-control" placeholder="Any operational constraints, handling notes">{{ defaults.special_notes }}</textarea>
+    </div>
     <div class="col-12 d-flex justify-content-between align-items-center mt-3">
       <a href="{{ url_for('dispatch_history') }}" class="btn btn-outline-secondary">View History</a>
       <button type="submit" class="btn btn-primary">Save Release</button>

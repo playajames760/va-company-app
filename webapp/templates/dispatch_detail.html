@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h2 class="mb-0">Dispatch Release #{{ d.id }} – {{ d.flight_id }}</h2>
+    <a href="{{ url_for('dispatch_history') }}" class="btn btn-outline-secondary btn-sm">Back to History</a>
+  </div>
+  <p class="text-muted small mb-3">Comprehensive flight/job description including planning, cargo expectations, weather, and special instructions.</p>
+  <div class="row g-3">
+    <div class="col-md-3">
+      <div class="fw-semibold">Date</div>
+      <div>{{ d.date }}</div>
+    </div>
+    <div class="col-md-3">
+      <div class="fw-semibold">Flight ID</div>
+      <div>{{ d.flight_id }}</div>
+    </div>
+    <div class="col-md-3">
+      <div class="fw-semibold">Aircraft</div>
+      <div>{{ d.aircraft }}</div>
+    </div>
+    <div class="col-md-3">
+      <div class="fw-semibold">Dep → Dest</div>
+      <div>{{ d.departure }} → {{ d.destination }}</div>
+    </div>
+    <div class="col-md-3">
+      <div class="fw-semibold">Off-Blocks (Z)</div>
+      <div>{{ d.offblocks }}</div>
+    </div>
+    <div class="col-md-3">
+      <div class="fw-semibold">Arrival (Z)</div>
+      <div>{{ d.arrival }}</div>
+    </div>
+    <div class="col-md-3">
+      <div class="fw-semibold">Payload Planned (lbs)</div>
+      <div>{{ d.payload_planned or '—' }}</div>
+    </div>
+    <div class="col-md-3">
+      <div class="fw-semibold">Fuel Planned</div>
+      <div>{{ d.fuel_planned or '—' }}</div>
+    </div>
+    <div class="col-md-6">
+      <div class="fw-semibold">Alternate Airports</div>
+      <div class="small">{{ d.alt_airports or '—' }}</div>
+    </div>
+    <div class="col-md-6">
+      <div class="fw-semibold">Cargo Plan</div>
+      <div class="small">{{ d.cargo_plan or '—' }}</div>
+    </div>
+    <div class="col-md-6">
+      <div class="fw-semibold">Weather Brief</div>
+      <div class="small">{{ d.weather_brief or '—' }}</div>
+    </div>
+    <div class="col-md-6">
+      <div class="fw-semibold">Special Notes / Instructions</div>
+      <div class="small">{{ d.special_notes or '—' }}</div>
+    </div>
+    <div class="col-12">
+      <div class="fw-semibold">Route / Remarks</div>
+      <pre class="small bg-light p-2 border rounded" style="white-space:pre-wrap">{{ d.route }}</pre>
+    </div>
+  </div>
+  <hr>
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('cargo', date=d.date, flight_id=d.flight_id, aircraft=d.aircraft, departure=d.departure, arrival=d.destination) }}">Create Cargo Manifest</a>
+    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('crew', date=d.date, flight_id=d.flight_id, origin=d.departure, destination=d.destination, aircraft=d.aircraft, dispatch_release_id=d.id) }}">Create Crew Log</a>
+    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('dispatch', date=d.date, flight_id=d.flight_id, aircraft=d.aircraft, departure=d.departure, destination=d.destination, route=d.route) }}">New Revision</a>
+  </div>
+</div>
+{% endblock %}

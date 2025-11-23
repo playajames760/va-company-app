@@ -33,6 +33,12 @@ class DispatchRelease(db.Model):
     offblocks = db.Column(db.String(10))
     arrival = db.Column(db.String(10))
     route = db.Column(db.Text)
+    payload_planned = db.Column(db.String(20))  # Planned payload weight (lbs)
+    fuel_planned = db.Column(db.String(20))     # Planned fuel (gal or lbs)
+    cargo_plan = db.Column(db.Text)             # Summary of intended cargo items
+    alt_airports = db.Column(db.Text)           # Alternate airports list
+    weather_brief = db.Column(db.Text)          # Weather summary / risks
+    special_notes = db.Column(db.Text)          # Special instructions / hazards
 
 
 class CrewLog(db.Model):
@@ -75,6 +81,21 @@ class FleetEntry(db.Model):
 # Create tables after all model classes have been declared
 with app.app_context():
     db.create_all()
+    # Runtime migration helper: add new DispatchRelease columns if DB existed earlier
+    insp = db.session.execute(db.text("PRAGMA table_info(dispatch_release)")).fetchall()
+    existing_cols = {row[1] for row in insp}
+    new_cols = {
+        'payload_planned': 'TEXT',
+        'fuel_planned': 'TEXT',
+        'cargo_plan': 'TEXT',
+        'alt_airports': 'TEXT',
+        'weather_brief': 'TEXT',
+        'special_notes': 'TEXT'
+    }
+    for col, ddl in new_cols.items():
+        if col not in existing_cols:
+            db.session.execute(db.text(f"ALTER TABLE dispatch_release ADD COLUMN {col} {ddl}"))
+    db.session.commit()
 
 
 
@@ -149,7 +170,13 @@ def dispatch():
             destination=request.form.get('destination'),
             offblocks=request.form.get('offblocks'),
             arrival=request.form.get('arrival'),
-            route=request.form.get('route')
+            route=request.form.get('route'),
+            payload_planned=request.form.get('payload_planned'),
+            fuel_planned=request.form.get('fuel_planned'),
+            cargo_plan=request.form.get('cargo_plan'),
+            alt_airports=request.form.get('alt_airports'),
+            weather_brief=request.form.get('weather_brief'),
+            special_notes=request.form.get('special_notes')
         )
         db.session.add(dispatch_entry)
         db.session.commit()
@@ -162,9 +189,20 @@ def dispatch():
         'destination': request.args.get('destination', ''),
         'offblocks': request.args.get('offblocks', ''),
         'arrival': request.args.get('arrival', ''),
-        'route': request.args.get('route', '')
+        'route': request.args.get('route', ''),
+        'payload_planned': request.args.get('payload_planned', ''),
+        'fuel_planned': request.args.get('fuel_planned', ''),
+        'cargo_plan': request.args.get('cargo_plan', ''),
+        'alt_airports': request.args.get('alt_airports', ''),
+        'weather_brief': request.args.get('weather_brief', ''),
+        'special_notes': request.args.get('special_notes', '')
     }
     return render_template('dispatch_form.html', defaults=defaults)
+
+@app.route('/dispatch/<int:id>')
+def dispatch_detail(id):
+    d = DispatchRelease.query.get_or_404(id)
+    return render_template('dispatch_detail.html', d=d)
 
 
 @app.route('/dispatch/history')
