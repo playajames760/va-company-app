@@ -13,6 +13,10 @@
         --pra-danger: #dc3545;
         --pra-warning: #ffc107;
         --pra-info: #0dcaf0;
+        --pra-thead-bg-light: #e9ecef;
+        --pra-thead-color-light: #212529;
+        --pra-thead-bg-dark: #1f2542;
+        --pra-thead-color-dark: #f8f9fa;
       }
       
       [data-bs-theme="dark"] {
@@ -61,6 +65,25 @@
       [data-bs-theme="light"] .table {
         --bs-table-striped-bg: rgba(0,0,0,0.02);
         --bs-table-hover-bg: rgba(0,0,0,0.04);
+      }
+
+      /* Unified table header styling */
+      .pra-thead th {
+        font-size: .70rem;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        font-weight: 600;
+        padding-top: .4rem;
+        padding-bottom: .4rem;
+        border-bottom: 1px solid var(--bs-border-color) !important;
+      }
+      [data-bs-theme="light"] .pra-thead th {
+        background-color: var(--pra-thead-bg-light);
+        color: var(--pra-thead-color-light);
+      }
+      [data-bs-theme="dark"] .pra-thead th {
+        background-color: var(--pra-thead-bg-dark);
+        color: var(--pra-thead-color-dark);
       }
       
       .btn-outline-secondary, .btn-outline-primary, .btn-outline-warning, 
