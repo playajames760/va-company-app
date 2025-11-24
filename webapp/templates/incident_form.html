@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <h2 class="mb-3">Report Company Incident</h2>
+  <p class="text-muted small">Log operational or safety incidents that may impact company costs or reputation. Estimated costs will be deducted from company balance immediately and reflected against completed dispatch profits on the dashboard.</p>
+  <form method="post" class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label">Date</label>
+      <input type="date" name="date" class="form-control" value="{{ defaults.date }}">
+    </div>
+    <div class="col-md-9">
+      <label class="form-label">Title</label>
+      <input type="text" name="title" class="form-control" placeholder="Bird strike on departure" value="{{ defaults.title }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Severity</label>
+      <select name="severity" class="form-select">
+        <option value="Minor" {% if defaults.severity=='Minor' %}selected{% endif %}>Minor</option>
+        <option value="Major" {% if defaults.severity=='Major' %}selected{% endif %}>Major</option>
+        <option value="Critical" {% if defaults.severity=='Critical' %}selected{% endif %}>Critical</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Linked Dispatch (optional)</label>
+      <select name="dispatch_release_id" class="form-select">
+        <option value="">-- None --</option>
+        {% for d in dispatch_options %}
+          <option value="{{ d.id }}" {% if d.id|string == defaults.dispatch_release_id|string %}selected{% endif %}>#{{ d.id }} {{ d.date }} {{ d.flight_id }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Estimated Cost (USD)</label>
+      <input type="number" step="0.01" min="0" name="estimated_cost" class="form-control" value="{{ defaults.estimated_cost }}" placeholder="500.00">
+      <div class="form-text">Deducted from company balance when logged.</div>
+    </div>
+    <div class="col-12">
+      <label class="form-label">Description</label>
+      <textarea name="description" rows="5" class="form-control" placeholder="Describe what happened, contributing factors, and any follow-up actions.">{{ defaults.description }}</textarea>
+    </div>
+    <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+      <a href="{{ url_for('incident_history') }}" class="btn btn-outline-secondary">View All Incidents</a>
+      <button type="submit" class="btn btn-primary">Log Incident</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

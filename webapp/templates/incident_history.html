@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h2 class="mb-0">Company Incidents</h2>
+    <a href="{{ url_for('incident') }}" class="btn btn-primary btn-sm">Report New Incident</a>
+  </div>
+  <p class="text-muted small mb-0">Track operational and safety incidents. Open incidents with estimated costs reduce your displayed net profit from completed dispatches.</p>
+</div>
+
+<div class="bg-white rounded shadow-sm p-3">
+  <table class="table table-sm table-striped align-middle mb-0">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Date</th>
+        <th>Title</th>
+        <th>Severity</th>
+        <th>Linked Dispatch</th>
+        <th>Estimated Cost</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inc in incidents %}
+        <tr>
+          <td>{{ inc.id }}</td>
+          <td>{{ inc.date }}</td>
+          <td>{{ inc.title }}</td>
+          <td>{{ inc.severity }}</td>
+          <td>
+            {% if inc.dispatch_release_id %}
+              <a href="{{ url_for('dispatch_detail', id=inc.dispatch_release_id) }}">Dispatch #{{ inc.dispatch_release_id }}</a>
+            {% else %}
+              
+            {% endif %}
+          </td>
+          <td>${{ '%.2f'|format(inc.estimated_cost or 0.0) }}</td>
+          <td>
+            {% if inc.resolved %}
+              <span class="badge bg-success">Closed</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">Open</span>
+            {% endif %}
+          </td>
+          <td class="text-nowrap">
+            <a href="{{ url_for('incident_detail', id=inc.id) }}" class="btn btn-outline-secondary btn-sm">View / Update</a>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="8" class="text-muted">No incidents have been logged.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

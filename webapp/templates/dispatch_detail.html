@@ -188,6 +188,7 @@
     <a class="btn btn-outline-primary btn-sm" href="{{ url_for('crew', date=d.date, flight_id=d.flight_id, origin=d.departure, destination=d.destination, aircraft=d.aircraft, dispatch_release_id=d.id) }}">Create Crew Log</a>
     <a class="btn btn-outline-warning btn-sm" href="{{ url_for('dispatch_edit', id=d.id) }}">Edit Release</a>
     <a class="btn btn-outline-info btn-sm" href="{{ url_for('dispatch_simbrief', id=d.id) }}" target="_blank" rel="noopener">SimBrief Prefill</a>
+    <a class="btn btn-outline-danger btn-sm" href="{{ url_for('incident', dispatch_release_id=d.id) }}">Report Incident</a>
   </div>
 </div>
 {% endblock %}

@@ -67,6 +67,17 @@ class Transaction(db.Model):
     crew_log_id = db.Column(db.Integer, db.ForeignKey('crew_log.id'))
 
 
+class Incident(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.String(20))
+    title = db.Column(db.String(100))
+    description = db.Column(db.Text)
+    severity = db.Column(db.String(20))  # e.g. Minor, Major, Critical
+    dispatch_release_id = db.Column(db.Integer, db.ForeignKey('dispatch_release.id'))
+    estimated_cost = db.Column(db.Float, default=0.0)
+    resolved = db.Column(db.Integer, default=0)  # 0=open, 1=closed
+
+
 class CrewLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.String(20))
@@ -155,6 +166,12 @@ with app.app_context():
     if 'fuel_used' not in crew_cols:
         db.session.execute(db.text("ALTER TABLE crew_log ADD COLUMN fuel_used TEXT"))
         db.session.commit()
+    # Ensure incident table exists (created via model above). If older DBs lack estimated_cost or resolved, add.
+    insp_incident = db.session.execute(db.text("PRAGMA table_info(incident)")).fetchall()
+    incident_cols = {row[1] for row in insp_incident} if insp_incident else set()
+    if not insp_incident:
+        # Table will be created by db.create_all for new DBs; for existing DBs without it, nothing else required.
+        pass
 
 
 # --- Helper Parsers -------------------------------------------------------
@@ -358,6 +375,15 @@ def compute_dispatch_financials(dispatch: DispatchRelease):
     return round(revenue,2), round(costs,2), round(profit,2), round(distance_nm,1)
 
 
+def get_company_account():
+    acct = CompanyAccount.query.first()
+    if not acct:
+        acct = CompanyAccount(balance=0.0)
+        db.session.add(acct)
+        db.session.commit()
+    return acct
+
+
 
 
 
@@ -367,6 +393,7 @@ def index():
     releases = DispatchRelease.query.order_by(DispatchRelease.id.desc()).limit(5).all()
     logs = CrewLog.query.order_by(CrewLog.id.desc()).limit(5).all()
     notams = CompanyNotam.query.order_by(CompanyNotam.id.desc()).limit(5).all()
+    incidents = Incident.query.order_by(Incident.id.desc()).limit(5).all()
     fleet_entries = FleetEntry.query.order_by(FleetEntry.id.desc()).all()
     acct = CompanyAccount.query.first()
     counts = {
@@ -374,7 +401,8 @@ def index():
         'dispatch_releases': DispatchRelease.query.count(),
         'crew_logs': CrewLog.query.count(),
         'company_notams': CompanyNotam.query.count(),
-        'fleet_entries': FleetEntry.query.count()
+        'fleet_entries': FleetEntry.query.count(),
+        'incidents': Incident.query.count()
     }
     completed_dispatches = DispatchRelease.query.filter_by(completed=1).all()
     total_completed_profit = 0.0
@@ -384,7 +412,23 @@ def index():
             total_completed_profit += _prof
         except Exception:
             pass
-    return render_template('index.html', manifests=manifests, releases=releases, logs=logs, notams=notams, fleet_entries=fleet_entries, counts=counts, completed_profit=round(total_completed_profit,2))
+    # Subtract open incident estimated costs from displayed completed profit to show net after-incident impact
+    open_incidents = Incident.query.filter_by(resolved=0).all()
+    total_incident_cost = sum(i.estimated_cost or 0.0 for i in open_incidents)
+    net_profit_after_incidents = total_completed_profit - total_incident_cost
+    return render_template(
+        'index.html',
+        manifests=manifests,
+        releases=releases,
+        logs=logs,
+        notams=notams,
+        fleet_entries=fleet_entries,
+        counts=counts,
+        completed_profit=round(total_completed_profit, 2),
+        incident_costs=round(total_incident_cost, 2),
+        net_profit=round(net_profit_after_incidents, 2),
+        incidents=incidents
+    )
 
 
 @app.route('/cargo', methods=['GET', 'POST'])
@@ -449,6 +493,77 @@ def cargo():
         'dispatch_release_id': request.args.get('dispatch_release_id', '')
     }
     return render_template('cargo_form.html', defaults=defaults)
+
+
+@app.route('/incidents')
+def incident_history():
+    incidents = Incident.query.order_by(Incident.id.desc()).all()
+    return render_template('incident_history.html', incidents=incidents)
+
+
+@app.route('/incident', methods=['GET', 'POST'])
+def incident():
+    if request.method == 'POST':
+        date = request.form.get('date') or datetime.date.today().isoformat()
+        title = request.form.get('title')
+        description = request.form.get('description')
+        severity = request.form.get('severity') or 'Minor'
+        dispatch_id = request.form.get('dispatch_release_id') or None
+        est_cost_raw = request.form.get('estimated_cost') or '0'
+        try:
+            est_cost = float(est_cost_raw)
+        except ValueError:
+            est_cost = 0.0
+        incident = Incident(
+            date=date,
+            title=title,
+            description=description,
+            severity=severity,
+            dispatch_release_id=dispatch_id,
+            estimated_cost=est_cost,
+            resolved=0
+        )
+        db.session.add(incident)
+        # Immediately impact company balance as an expense
+        if est_cost > 0:
+            acct = get_company_account()
+            acct.balance -= est_cost
+            t = Transaction(
+                type='expense',
+                amount=est_cost,
+                description=f'Incident: {title or "Unnamed"}',
+                dispatch_release_id=dispatch_id
+            )
+            db.session.add(t)
+        db.session.commit()
+        flash('Incident logged.', 'success')
+        return redirect(url_for('incident_history'))
+    defaults = {
+        'date': datetime.date.today().isoformat(),
+        'title': '',
+        'description': '',
+        'severity': 'Minor',
+        'dispatch_release_id': request.args.get('dispatch_release_id', ''),
+        'estimated_cost': ''
+    }
+    dispatch_options = DispatchRelease.query.order_by(DispatchRelease.id.desc()).all()
+    return render_template('incident_form.html', defaults=defaults, dispatch_options=dispatch_options)
+
+
+@app.route('/incident/<int:id>', methods=['GET', 'POST'])
+def incident_detail(id):
+    inc = Incident.query.get_or_404(id)
+    if request.method == 'POST':
+        # Allow updating resolution status only for now
+        resolved_flag = 1 if request.form.get('resolved') == 'on' else 0
+        inc.resolved = resolved_flag
+        db.session.commit()
+        flash('Incident updated.', 'success')
+        return redirect(url_for('incident_detail', id=id))
+    linked_dispatch = None
+    if inc.dispatch_release_id:
+        linked_dispatch = DispatchRelease.query.get(inc.dispatch_release_id)
+    return render_template('incident_detail.html', incident=inc, linked_dispatch=linked_dispatch)
 
 
 @app.route('/cargo/history')

@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h2 class="mb-0">Incident #{{ incident.id }} – {{ incident.title }}</h2>
+    <a href="{{ url_for('incident_history') }}" class="btn btn-outline-secondary btn-sm">Back to Incidents</a>
+  </div>
+  <p class="text-muted small mb-0">Review details and mark the incident as resolved once follow-up actions are complete.</p>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-8">
+    <div class="bg-white rounded shadow-sm p-3 mb-3">
+      <h3 class="h6 mb-3">Details</h3>
+      <dl class="row mb-0">
+        <dt class="col-sm-3">Date</dt>
+        <dd class="col-sm-9">{{ incident.date }}</dd>
+        <dt class="col-sm-3">Severity</dt>
+        <dd class="col-sm-9">{{ incident.severity }}</dd>
+        <dt class="col-sm-3">Estimated Cost</dt>
+        <dd class="col-sm-9">${{ '%.2f'|format(incident.estimated_cost or 0.0) }}</dd>
+        <dt class="col-sm-3">Linked Dispatch</dt>
+        <dd class="col-sm-9">
+          {% if linked_dispatch %}
+            <a href="{{ url_for('dispatch_detail', id=linked_dispatch.id) }}">{{ linked_dispatch.date }} {{ linked_dispatch.flight_id }}</a>
+          {% else %}
+            
+          {% endif %}
+        </dd>
+      </dl>
+      <hr>
+      <h3 class="h6">Narrative</h3>
+      <p class="mb-0" style="white-space: pre-line;">{{ incident.description }}</p>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="bg-white rounded shadow-sm p-3">
+      <h3 class="h6 mb-3">Status</h3>
+      <form method="post">
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" id="resolved" name="resolved" {% if incident.resolved %}checked{% endif %}>
+          <label class="form-check-label" for="resolved">Incident resolved / closed</label>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Update Status</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
