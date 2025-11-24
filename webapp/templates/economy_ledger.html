@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Economy Ledger</h2>
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">Back</a>
+  </div>
+  <p class="text-muted small mb-2">Company financial overview. Revenue is generated per dispatch flight; costs include fuel and maintenance. Profit = Revenue - Costs. Constants are configurable in code.</p>
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">
+      <div class="border rounded p-3 h-100">
+        <div class="fw-semibold">Balance ({{ account.currency }})</div>
+        <div class="fs-4">{{ '%.2f'|format(account.balance) }}</div>
+      </div>
+    </div>
+    <div class="col-md-8">
+      <div class="border rounded p-3 h-100 small">
+        <div class="fw-semibold mb-2">Economy Constants</div>
+        <ul class="mb-0">
+          <li>Base Flight Revenue: {{ constants.BASE_FLIGHT_REVENUE }}</li>
+          <li>Revenue / lb Payload: {{ constants.REVENUE_PER_LB }}</li>
+          <li>Fuel Cost / Unit: {{ constants.FUEL_COST_PER_UNIT }}</li>
+          <li>Maintenance Flat: {{ constants.MAINTENANCE_FLAT }}</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <h3 class="h6 mt-4">Recent Transactions</h3>
+  {% if transactions %}
+  <div class="table-responsive">
+    <table class="table table-sm table-striped align-middle">
+      <thead>
+        <tr><th>Time (UTC)</th><th>Type</th><th>Amount</th><th>Description</th><th>Dispatch</th></tr>
+      </thead>
+      <tbody>
+        {% for t in transactions %}
+        <tr>
+          <td class="small">{{ t.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+          <td>{{ t.type }}</td>
+          <td>{% if t.type == 'expense' %}-{% endif %}{{ '%.2f'|format(t.amount) }}</td>
+          <td class="small">{{ t.description }}</td>
+          <td>{% if t.dispatch_release_id %}<a href="{{ url_for('dispatch_detail', id=t.dispatch_release_id) }}">#{{ t.dispatch_release_id }}</a>{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <p class="text-muted small">No transactions yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

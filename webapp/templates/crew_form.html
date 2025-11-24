@@ -48,6 +48,10 @@
       <label class="form-label">Cargo (lbs)</label>
       <input type="text" name="cargo_weight" class="form-control" value="{{ defaults.cargo_weight }}">
     </div>
+    <div class="col-md-3">
+      <label class="form-label">Fuel Used (units)</label>
+      <input type="text" name="fuel_used" class="form-control" placeholder="Actual fuel" value="{{ defaults.fuel_used }}">
+    </div>
     <div class="col-12">
       <label class="form-label">Remarks / Route Segment</label>
       <textarea name="remarks" rows="3" class="form-control" placeholder="Notes on weather, ATC, performance, etc.">{{ defaults.remarks }}</textarea>

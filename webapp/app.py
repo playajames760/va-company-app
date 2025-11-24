@@ -1,4 +1,5 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, send_from_directory, abort
+import datetime
 from flask_sqlalchemy import SQLAlchemy
 import os
 import re
@@ -51,6 +52,21 @@ class DispatchRelease(db.Model):
     cargo_manifests = db.relationship('CargoManifest', backref='dispatch_release', lazy='dynamic')
     fleet_entry = db.relationship('FleetEntry', lazy='joined')
 
+class CompanyAccount(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    balance = db.Column(db.Float, default=0.0)
+    currency = db.Column(db.String(10), default='USD')
+
+class Transaction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    type = db.Column(db.String(20))  # 'revenue' or 'expense'
+    amount = db.Column(db.Float)
+    description = db.Column(db.String(200))
+    dispatch_release_id = db.Column(db.Integer, db.ForeignKey('dispatch_release.id'))
+    cargo_manifest_id = db.Column(db.Integer, db.ForeignKey('cargo_manifest.id'))
+    crew_log_id = db.Column(db.Integer, db.ForeignKey('crew_log.id'))
+
 
 class CrewLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -63,6 +79,7 @@ class CrewLog(db.Model):
     block_on = db.Column(db.String(10))
     block_time = db.Column(db.String(10))
     cargo_weight = db.Column(db.String(20))
+    fuel_used = db.Column(db.String(20))  # actual fuel used (numeric)
     remarks = db.Column(db.Text)
     dispatch_release_id = db.Column(db.Integer, db.ForeignKey('dispatch_release.id'))
     cargo_manifest_id = db.Column(db.Integer, db.ForeignKey('cargo_manifest.id'))
@@ -126,6 +143,17 @@ with app.app_context():
     # Ensure fleet_entry_id column exists on dispatch_release
     if 'fleet_entry_id' not in existing_cols:
         db.session.execute(db.text("ALTER TABLE dispatch_release ADD COLUMN fleet_entry_id INTEGER"))
+        db.session.commit()
+
+    # Ensure single company account row exists
+    if CompanyAccount.query.first() is None:
+        db.session.add(CompanyAccount(balance=0.0))
+        db.session.commit()
+    # Runtime add fuel_used to crew_log if missing
+    insp_crew = db.session.execute(db.text("PRAGMA table_info(crew_log)")).fetchall()
+    crew_cols = {row[1] for row in insp_crew}
+    if 'fuel_used' not in crew_cols:
+        db.session.execute(db.text("ALTER TABLE crew_log ADD COLUMN fuel_used TEXT"))
         db.session.commit()
 
 
@@ -218,6 +246,84 @@ def parse_pln(content: str):
             last = part
         data['route_str'] = ' '.join(compact)
     return data
+
+# --- Economy Helpers ------------------------------------------------------
+ECONOMY_CONSTANTS = {
+    'BASE_FLIGHT_REVENUE': 250.0,          # base revenue per dispatch
+    'REVENUE_PER_LB': 0.35,                # revenue per pound of planned (or actual) payload
+    'FUEL_COST_PER_UNIT': 5.25,            # cost per unit (gal or labeled unit)
+    'MAINTENANCE_FLAT': 110.0,             # flat maintenance cost per flight
+    'REVENUE_PER_NM': 1.15                # distance-based revenue component per nautical mile
+}
+
+def compute_dispatch_financials(dispatch: DispatchRelease):
+    """Compute revenue, costs, profit for a dispatch release.
+    Payload: prefer actual cargo weight if present else planned payload.
+    Fuel cost: planned fuel * cost constant if numeric.
+    Returns (revenue, costs, profit).
+    """
+    rev_base = ECONOMY_CONSTANTS['BASE_FLIGHT_REVENUE']
+    payload_val = None
+    for candidate in [dispatch.actual_cargo_weight, dispatch.payload_planned]:
+        if candidate:
+            try:
+                payload_val = float(candidate)
+                break
+            except ValueError:
+                continue
+    payload_revenue = (payload_val or 0.0) * ECONOMY_CONSTANTS['REVENUE_PER_LB']
+    # Attempt to use actual fuel from related crew logs (latest with numeric fuel_used)
+    fuel_val = 0.0
+    actual_fuel = None
+    crew_logs = CrewLog.query.filter_by(dispatch_release_id=dispatch.id).order_by(CrewLog.id.desc()).all()
+    for cl in crew_logs:
+        if cl.fuel_used:
+            try:
+                actual_fuel = float(cl.fuel_used)
+                break
+            except ValueError:
+                continue
+    if actual_fuel is not None:
+        fuel_val = actual_fuel
+    elif dispatch.fuel_planned:
+        try:
+            fuel_val = float(dispatch.fuel_planned)
+        except ValueError:
+            fuel_val = 0.0
+    fuel_cost = fuel_val * ECONOMY_CONSTANTS['FUEL_COST_PER_UNIT']
+    maintenance = ECONOMY_CONSTANTS['MAINTENANCE_FLAT']
+    # Distance revenue component (requires simple airport coordinate mapping)
+    APT_COORDS = {
+        'KPOC': (34.091, -117.781),
+        'KCRQ': (33.128, -117.279),
+        'KSBP': (35.236, -120.642),
+        'KSNA': (33.6757, -117.8682),
+        'KOKB': (33.2173, -117.353),
+        'KVNY': (34.2098, -118.4904),
+        'KRZS': (34.5113, -119.755),
+        'KMQO': (35.237, -120.642)  # placeholder MQO VOR approx same as KSBP for demo
+    }
+    def haversine_nm(lat1, lon1, lat2, lon2):
+        from math import radians, sin, cos, atan2, sqrt
+        R = 3440.065
+        dlat = radians(lat2 - lat1)
+        dlon = radians(lon2 - lon1)
+        a = sin(dlat/2)**2 + cos(radians(lat1))*cos(radians(lat2))*sin(dlon/2)**2
+        c = 2 * atan2(sqrt(a), sqrt(1-a))
+        return R * c
+    distance_nm = 0.0
+    if dispatch.departure in APT_COORDS and dispatch.destination in APT_COORDS:
+        (la1, lo1) = APT_COORDS[dispatch.departure]
+        (la2, lo2) = APT_COORDS[dispatch.destination]
+        try:
+            distance_nm = haversine_nm(la1, lo1, la2, lo2)
+        except Exception:
+            distance_nm = 0.0
+    distance_revenue = distance_nm * ECONOMY_CONSTANTS['REVENUE_PER_NM']
+    revenue = rev_base + payload_revenue + distance_revenue
+    costs = fuel_cost + maintenance
+    profit = revenue - costs
+    return round(revenue,2), round(costs,2), round(profit,2), round(distance_nm,1)
 
 
 
@@ -426,6 +532,18 @@ def dispatch():
             fleet_entry_options = FleetEntry.query.order_by(FleetEntry.status.asc(), FleetEntry.registration.asc()).all()
             return render_template('dispatch_form.html', defaults=defaults, cargo_manifest_options=cargo_manifest_options, fleet_entry_options=fleet_entry_options)
         db.session.commit()
+        # Economy: create transactions (revenue and expenses) and update balance
+        revenue, costs, profit, _dist = compute_dispatch_financials(dispatch_entry)
+        acct = CompanyAccount.query.first()
+        if acct:
+            # Revenue transaction
+            db.session.add(Transaction(type='revenue', amount=revenue, description=f'Dispatch #{dispatch_entry.id} revenue', dispatch_release_id=dispatch_entry.id))
+            acct.balance += revenue
+            # Expense transaction (costs)
+            if costs > 0:
+                db.session.add(Transaction(type='expense', amount=costs, description=f'Dispatch #{dispatch_entry.id} operational costs', dispatch_release_id=dispatch_entry.id))
+                acct.balance -= costs
+            db.session.commit()
         # Optional link existing cargo manifest
         cargo_manifest_id = request.form.get('cargo_manifest_id') or None
         create_cargo_next = request.form.get('create_cargo_next') == 'on'
@@ -477,7 +595,8 @@ def dispatch_detail(id):
     pln_data = None
     if d.flight_plan_raw and (d.flight_plan_source == 'msfs-pln' or '<SimBase.Document' in d.flight_plan_raw):
         pln_data = parse_pln(d.flight_plan_raw)
-    return render_template('dispatch_detail.html', d=d, linked_manifests=linked_manifests, pln=pln_data)
+    revenue, costs, profit, distance_nm = compute_dispatch_financials(d)
+    return render_template('dispatch_detail.html', d=d, linked_manifests=linked_manifests, pln=pln_data, fin_summary={'revenue':revenue,'costs':costs,'profit':profit,'distance_nm':distance_nm})
 
 @app.route('/dispatch/<int:id>/simbrief')
 def dispatch_simbrief(id):
@@ -606,6 +725,27 @@ def dispatch_edit(id):
             fleet_entry_options = FleetEntry.query.order_by(FleetEntry.status.asc(), FleetEntry.registration.asc()).all()
             return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id, linked_manifests=linked_manifests, cargo_manifest_options=cargo_manifest_options, fleet_entry_options=fleet_entry_options)
         db.session.commit()
+        # Retroactively adjust revenue/expense transactions for this dispatch
+        acct = CompanyAccount.query.first()
+        if acct:
+            new_rev, new_costs, new_profit, _dist = compute_dispatch_financials(d)
+            rev_tx = Transaction.query.filter_by(dispatch_release_id=d.id, type='revenue').filter(Transaction.description.like(f'Dispatch #{d.id} revenue%')).first()
+            cost_tx = Transaction.query.filter_by(dispatch_release_id=d.id, type='expense').filter(Transaction.description.like(f'Dispatch #{d.id} operational costs%')).first()
+            if rev_tx:
+                delta = new_rev - rev_tx.amount
+                rev_tx.amount = new_rev
+                acct.balance += delta
+            else:
+                db.session.add(Transaction(type='revenue', amount=new_rev, description=f'Dispatch #{d.id} revenue (retro)', dispatch_release_id=d.id))
+                acct.balance += new_rev
+            if cost_tx:
+                delta_c = new_costs - cost_tx.amount
+                cost_tx.amount = new_costs
+                acct.balance -= delta_c
+            else:
+                db.session.add(Transaction(type='expense', amount=new_costs, description=f'Dispatch #{d.id} operational costs (retro)', dispatch_release_id=d.id))
+                acct.balance -= new_costs
+            db.session.commit()
         # Optional link existing cargo manifest on edit
         cargo_manifest_id = request.form.get('cargo_manifest_id') or None
         create_cargo_next = request.form.get('create_cargo_next') == 'on'
@@ -651,6 +791,12 @@ def dispatch_edit(id):
     linked_manifests = d.cargo_manifests.order_by(CargoManifest.id.desc()).all()
     fleet_entry_options = FleetEntry.query.order_by(FleetEntry.status.asc(), FleetEntry.registration.asc()).all()
     return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id, cargo_manifest_options=cargo_manifest_options, linked_manifests=linked_manifests, fleet_entry_options=fleet_entry_options)
+
+@app.route('/economy')
+def economy_ledger():
+    acct = CompanyAccount.query.first()
+    txns = Transaction.query.order_by(Transaction.timestamp.desc()).limit(200).all()
+    return render_template('economy_ledger.html', account=acct, transactions=txns, constants=ECONOMY_CONSTANTS)
 
 @app.route('/dispatch/<int:id>/briefing_pdf')
 def dispatch_briefing_pdf(id):
@@ -703,12 +849,41 @@ def crew():
             block_on=request.form.get('block_on'),
             block_time=request.form.get('block_time'),
             cargo_weight=request.form.get('cargo_weight'),
+            fuel_used=request.form.get('fuel_used'),
             remarks=request.form.get('remarks'),
             dispatch_release_id=request.form.get('dispatch_release_id') or None,
             cargo_manifest_id=request.form.get('cargo_manifest_id') or None
         )
         db.session.add(log)
         db.session.commit()
+        # Fuel reconciliation: compare planned vs actual and create adjustment transaction
+        if log.dispatch_release_id and log.fuel_used:
+            dr = DispatchRelease.query.get(log.dispatch_release_id)
+            acct = CompanyAccount.query.first()
+            if dr and acct:
+                try:
+                    actual_fuel = float(log.fuel_used)
+                except ValueError:
+                    actual_fuel = None
+                planned_fuel = None
+                if dr.fuel_planned:
+                    try:
+                        planned_fuel = float(dr.fuel_planned)
+                    except ValueError:
+                        planned_fuel = None
+                if actual_fuel is not None and planned_fuel is not None:
+                    planned_cost = planned_fuel * ECONOMY_CONSTANTS['FUEL_COST_PER_UNIT']
+                    actual_cost = actual_fuel * ECONOMY_CONSTANTS['FUEL_COST_PER_UNIT']
+                    diff = actual_cost - planned_cost
+                    if abs(diff) >= 0.01:  # meaningful difference
+                        if diff > 0:  # extra expense
+                            db.session.add(Transaction(type='expense', amount=diff, description=f'Fuel overrun dispatch #{dr.id}', dispatch_release_id=dr.id, crew_log_id=log.id))
+                            acct.balance -= diff
+                        else:  # savings
+                            savings = -diff
+                            db.session.add(Transaction(type='revenue', amount=savings, description=f'Fuel savings dispatch #{dr.id}', dispatch_release_id=dr.id, crew_log_id=log.id))
+                            acct.balance += savings
+                        db.session.commit()
         return redirect(url_for('crew_history'))
     defaults = {
         'date': request.args.get('date', ''),

@@ -40,6 +40,10 @@
       <div class="fw-semibold">Fuel Planned</div>
       <div>{{ d.fuel_planned or '—' }}</div>
     </div>
+    <div class="col-md-3">
+      <div class="fw-semibold">Financial Summary</div>
+      <div class="small">Rev: {{ '%.2f'|format(fin_summary.revenue) }} | Cost: {{ '%.2f'|format(fin_summary.costs) }} | Profit: {{ '%.2f'|format(fin_summary.profit) }}</div>
+    </div>
     <div class="col-md-6">
       <div class="fw-semibold">Alternate Airports</div>
       <div class="small">{{ d.alt_airports or '—' }}</div>
@@ -72,7 +76,7 @@
     {% if d.briefing_pdf_filename %}
     <div class="col-12">
       <div class="fw-semibold">Briefing PDF</div>
-      <div class="ratio ratio-16x9 border rounded mb-2" style="height:480px;">
+      <div class="border rounded mb-2" style="height:800px;">
         <iframe src="{{ url_for('dispatch_briefing_pdf', id=d.id) }}" title="Briefing PDF" style="width:100%;height:100%;border:0;" allowfullscreen></iframe>
       </div>
       <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('dispatch_briefing_pdf', id=d.id) }}" target="_blank" rel="noopener">Open / Download PDF</a>
