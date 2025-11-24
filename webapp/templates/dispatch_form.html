@@ -49,16 +49,26 @@
       <input type="file" name="fpl_file" class="form-control" accept=".xml,.fpl,.pln,.txt">
       <div class="form-text">
         If route empty we auto-extract & populate. Raw plan stored.
-        {% if edit_id and defaults.flight_plan_raw %}<br>Current: {{ defaults.flight_plan_source or 'uploaded file' }}{% endif %}
       </div>
+      {% if edit_id and defaults.flight_plan_raw %}
+      <div class="alert alert-info py-1 px-2 mt-1 small mb-0">
+        <strong>Current Flight Plan:</strong>
+        {{ defaults.flight_plan_source or 'uploaded file' }} (kept unless you choose a new file)
+      </div>
+      {% endif %}
     </div>
     <div class="col-md-6">
       <label class="form-label">Briefing PDF (optional)</label>
       <input type="file" name="briefing_pdf" class="form-control" accept="application/pdf,.pdf">
       <div class="form-text">
         Full briefing document (stored and viewable on detail page).
-        {% if edit_id and defaults.briefing_pdf_filename %}<br>Current: {{ defaults.briefing_pdf_filename }}{% endif %}
       </div>
+      {% if edit_id and defaults.briefing_pdf_filename %}
+      <div class="alert alert-info py-1 px-2 mt-1 small mb-0">
+        <strong>Current Briefing PDF:</strong>
+        {{ defaults.briefing_pdf_filename }} (kept unless you choose a new file)
+      </div>
+      {% endif %}
     </div>
     <hr class="mt-4" />
     <div class="col-md-3">
@@ -105,7 +115,7 @@
       </div>
       <div class="form-text">Automatically passes flight details and links new manifest to this dispatch.</div>
     </div>
-    <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+    <div class="col-12 mt-3 d-flex justify-content-between align-items-center">
       <a href="{{ url_for('dispatch_history') }}" class="btn btn-outline-secondary">View History</a>
       <button type="submit" class="btn btn-primary">{% if edit_id %}Update Release{% else %}Save Release{% endif %}</button>
     </div>
