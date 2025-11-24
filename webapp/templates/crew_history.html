@@ -7,7 +7,7 @@
   </div>
   {% if logs %}
   <div class="table-responsive">
-    <table class="table table-sm table-striped align-middle">
+    <table class="table table-sm table-hover align-middle">
       <thead>
         <tr>
           <th>#</th>
@@ -22,12 +22,11 @@
           <th>Cargo (lbs)</th>
           <th>Fuel Used</th>
           <th>Remarks</th>
-          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for l in logs %}
-        <tr>
+        <tr class="clickable-row" onclick="window.location='{{ url_for('crew_detail', id=l.id) }}'">
           <td>{{ l.id }}</td>
           <td>{{ l.date }}</td>
           <td>{{ l.flight_id }}</td>
@@ -40,14 +39,6 @@
           <td>{{ l.cargo_weight }}</td>
           <td>{{ l.fuel_used or '—' }}</td>
           <td style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ l.remarks }}</td>
-          <td class="text-nowrap">
-            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('crew_detail', id=l.id) }}">View/Edit</a>
-            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('cargo', date=l.date, flight_id=l.flight_id, aircraft=l.aircraft, departure=l.origin, arrival=l.destination) }}">Cargo</a>
-            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('dispatch', date=l.date, flight_id=l.flight_id, aircraft=l.aircraft, departure=l.origin, destination=l.destination) }}">Dispatch</a>
-            <form action="{{ url_for('delete_crew', id=l.id) }}" method="post" class="d-inline">
-              <button class="btn btn-danger btn-sm" onclick="return confirm('Delete this crew log entry?')">Delete</button>
-            </form>
-          </td>
         </tr>
         {% endfor %}
       </tbody>

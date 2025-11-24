@@ -7,7 +7,7 @@
   </div>
   {% if releases %}
   <div class="table-responsive">
-    <table class="table table-sm table-striped align-middle">
+    <table class="table table-sm table-hover align-middle">
       <thead>
         <tr>
           <th>#</th>
@@ -23,12 +23,12 @@
           <th>Actual Cargo</th>
           <th>∆ (lbs)</th>
           <th>Fuel</th>
-          <th>Actions</th>
+          <th>Status</th>
         </tr>
       </thead>
       <tbody>
         {% for d in releases %}
-        <tr>
+        <tr class="clickable-row" onclick="window.location='{{ url_for('dispatch_detail', id=d.id) }}'">
           <td>{{ d.id }}</td>
           <td>{{ d.date }}</td>
           <td>{{ d.flight_id }}</td>
@@ -36,7 +36,7 @@
           <td>{{ d.departure }}</td>
           <td>{{ d.destination }}</td>
           <td>{{ d.offblocks }}</td>
-            <td>{{ d.arrival }}</td>
+          <td>{{ d.arrival }}</td>
           <td style="max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ d.route }}</td>
           <td>{{ d.payload_planned or '—' }}</td>
           <td>{{ d.actual_cargo_weight or '—' }}</td>
@@ -47,14 +47,12 @@
             {% else %}—{% endif %}
           </td>
           <td>{{ d.fuel_planned or '—' }}</td>
-          <td class="text-nowrap">
-            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('dispatch_detail', id=d.id) }}">View</a>
-            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('dispatch_edit', id=d.id) }}">Edit</a>
-            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('cargo', date=d.date, flight_id=d.flight_id, aircraft=d.aircraft, departure=d.departure, arrival=d.destination, dispatch_release_id=d.id) }}">Cargo</a>
-            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('crew', date=d.date, flight_id=d.flight_id, origin=d.departure, destination=d.destination, aircraft=d.aircraft, dispatch_release_id=d.id) }}">Crew Log</a>
-            <form action="{{ url_for('delete_dispatch', id=d.id) }}" method="post" class="d-inline">
-              <button class="btn btn-danger btn-sm" onclick="return confirm('Delete this dispatch release?')">Delete</button>
-            </form>
+          <td>
+            {% if d.completed %}
+              <span class="badge bg-success">Completed</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">Planned</span>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}

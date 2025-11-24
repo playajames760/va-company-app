@@ -189,6 +189,9 @@
     <a class="btn btn-outline-warning btn-sm" href="{{ url_for('dispatch_edit', id=d.id) }}">Edit Release</a>
     <a class="btn btn-outline-info btn-sm" href="{{ url_for('dispatch_simbrief', id=d.id) }}" target="_blank" rel="noopener">SimBrief Prefill</a>
     <a class="btn btn-outline-danger btn-sm" href="{{ url_for('incident', dispatch_release_id=d.id) }}">Report Incident</a>
+    <form action="{{ url_for('delete_dispatch', id=d.id) }}" method="post" class="d-inline ms-auto" onsubmit="return confirm('Delete this dispatch release?');">
+      <button class="btn btn-outline-danger btn-sm">Delete</button>
+    </form>
   </div>
 </div>
 {% endblock %}

@@ -7,7 +7,7 @@
   </div>
   {% if entries %}
   <div class="table-responsive">
-    <table class="table table-sm table-striped align-middle">
+    <table class="table table-sm table-hover align-middle">
       <thead>
         <tr>
           <th>#</th>
@@ -18,12 +18,11 @@
           <th>MTOW (lbs)</th>
           <th>Useful Load (lbs)</th>
           <th>Notes</th>
-          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for f in entries %}
-        <tr>
+        <tr class="clickable-row" onclick="window.location='{{ url_for('fleet_detail', id=f.id) }}'">
           <td>{{ f.id }}</td>
           <td>{{ f.aircraft_type }}</td>
           <td>{{ f.registration }}</td>
@@ -32,13 +31,6 @@
           <td>{{ f.max_takeoff_weight }}</td>
           <td>{{ f.useful_load }}</td>
           <td style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ f.notes }}</td>
-          <td class="text-nowrap">
-            <a class="btn btn-outline-primary btn-sm" href="{{ url_for('fleet_detail', id=f.id) }}">View</a>
-            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('fleet_edit', id=f.id) }}">Edit</a>
-            <form action="{{ url_for('delete_fleet', id=f.id) }}" method="post" class="d-inline">
-              <button class="btn btn-danger btn-sm" onclick="return confirm('Delete this fleet entry?')">Delete</button>
-            </form>
-          </td>
         </tr>
         {% endfor %}
       </tbody>

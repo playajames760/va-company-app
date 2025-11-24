@@ -27,6 +27,9 @@
         <button class="btn btn-outline-warning btn-sm">Unlink Dispatch</button>
       </form>
     {% endif %}
+    <form action="{{ url_for('delete_cargo', id=m.id) }}" method="post" class="d-inline ms-auto" onsubmit="return confirm('Delete this cargo manifest?');">
+      <button class="btn btn-outline-danger btn-sm">Delete</button>
+    </form>
   </div>
   <hr class="my-4">
   <div id="editForm" class="{{ '' if editing else 'd-none' }}">

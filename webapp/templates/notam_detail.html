@@ -3,7 +3,12 @@
 <div class="p-4 bg-white rounded shadow-sm">
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h2 class="mb-0">Company NOTAM #{{ n.id }}</h2>
-    <a href="{{ url_for('notams_history') }}" class="btn btn-outline-secondary btn-sm">History</a>
+    <div class="btn-group">
+      <a href="{{ url_for('notams_history') }}" class="btn btn-outline-secondary btn-sm">History</a>
+      <form action="{{ url_for('delete_notam', id=n.id) }}" method="post" class="d-inline" onsubmit="return confirm('Delete this NOTAM?');">
+        <button class="btn btn-outline-danger btn-sm">Delete</button>
+      </form>
+    </div>
   </div>
   <dl class="row mb-0">
     <dt class="col-sm-3">NOTAM ID</dt><dd class="col-sm-9">{{ n.notam_id }}</dd>

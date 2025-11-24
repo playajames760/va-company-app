@@ -7,7 +7,7 @@
   </div>
   {% if notams %}
   <div class="table-responsive">
-    <table class="table table-sm table-striped align-middle">
+    <table class="table table-sm table-hover align-middle">
       <thead>
         <tr>
           <th>#</th>
@@ -16,23 +16,17 @@
           <th>Area</th>
           <th>Status</th>
           <th>Text</th>
-          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for n in notams %}
-        <tr>
+        <tr class="clickable-row" onclick="window.location='{{ url_for('notam_detail', id=n.id) }}'">
           <td>{{ n.id }}</td>
           <td>{{ n.notam_id }}</td>
           <td>{{ n.subject }}</td>
           <td>{{ n.area }}</td>
           <td>{{ n.status }}</td>
           <td style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ n.text }}</td>
-          <td class="text-nowrap">
-            <form action="{{ url_for('delete_notam', id=n.id) }}" method="post" class="d-inline">
-              <button class="btn btn-danger btn-sm" onclick="return confirm('Delete this NOTAM?')">Delete</button>
-            </form>
-          </td>
         </tr>
         {% endfor %}
       </tbody>

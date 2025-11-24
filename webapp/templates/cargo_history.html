@@ -7,7 +7,7 @@
   </div>
   {% if manifests %}
   <div class="table-responsive">
-    <table class="table table-sm table-striped align-middle">
+    <table class="table table-sm table-hover align-middle">
       <thead>
         <tr>
           <th>#</th>
@@ -17,12 +17,11 @@
           <th>Weight</th>
           <th>Pieces</th>
           <th>Notes</th>
-          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for m in manifests %}
-        <tr>
+        <tr class="clickable-row" onclick="window.location='{{ url_for('cargo_detail', id=m.id) }}'">
           <td>{{ m.id }}</td>
           <td>{{ m.date }}</td>
           <td>{{ m.departure }}</td>
@@ -30,14 +29,6 @@
           <td>{{ m.total_weight }}</td>
           <td>{{ m.pieces }}</td>
           <td style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ m.notes }}</td>
-          <td class="text-nowrap">
-            <a class="btn btn-outline-primary btn-sm" href="{{ url_for('cargo_detail', id=m.id) }}">View</a>
-            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('cargo_detail', id=m.id, edit=1) }}#editForm">Edit</a>
-            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('dispatch', date=m.date, departure=m.departure, destination=m.arrival) }}">Dispatch</a>
-            <form action="{{ url_for('delete_cargo', id=m.id) }}" method="post" class="d-inline">
-              <button class="btn btn-danger btn-sm" onclick="return confirm('Delete this cargo manifest?')">Delete</button>
-            </form>
-          </td>
         </tr>
         {% endfor %}
       </tbody>

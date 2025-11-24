@@ -16,21 +16,20 @@
         <th>Linked Dispatch</th>
         <th>Estimated Cost</th>
         <th>Status</th>
-        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for inc in incidents %}
-        <tr>
+        <tr class="clickable-row" onclick="window.location='{{ url_for('incident_detail', id=inc.id) }}'">
           <td>{{ inc.id }}</td>
           <td>{{ inc.date }}</td>
           <td>{{ inc.title }}</td>
           <td>{{ inc.severity }}</td>
           <td>
             {% if inc.dispatch_release_id %}
-              <a href="{{ url_for('dispatch_detail', id=inc.dispatch_release_id) }}">Dispatch #{{ inc.dispatch_release_id }}</a>
+              <a href="{{ url_for('dispatch_detail', id=inc.dispatch_release_id) }}" onclick="event.stopPropagation()">Dispatch #{{ inc.dispatch_release_id }}</a>
             {% else %}
-              
+              —
             {% endif %}
           </td>
           <td>${{ '%.2f'|format(inc.estimated_cost or 0.0) }}</td>
@@ -41,12 +40,9 @@
               <span class="badge bg-warning text-dark">Open</span>
             {% endif %}
           </td>
-          <td class="text-nowrap">
-            <a href="{{ url_for('incident_detail', id=inc.id) }}" class="btn btn-outline-secondary btn-sm">View / Update</a>
-          </td>
         </tr>
       {% else %}
-        <tr><td colspan="8" class="text-muted">No incidents have been logged.</td></tr>
+        <tr><td colspan="7" class="text-muted">No incidents have been logged.</td></tr>
       {% endfor %}
     </tbody>
   </table>
