@@ -10,60 +10,76 @@
   {% endif %}
   <div class="row g-3 mt-2">
     <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="stat-card border rounded p-3 text-center">
+      <a href="{{ url_for('economy_ledger') }}" class="text-decoration-none text-reset">
+      <div class="stat-card border rounded p-3 text-center clickable-stat">
         <div class="text-success mb-1">💵</div>
         <div class="small text-muted mb-1">Completed Profit</div>
         <div class="h3 mb-0 fw-bold text-success">${{ '%.0f'|format(completed_profit) }}</div>
       </div>
+      </a>
     </div>
     <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="stat-card border rounded p-3 text-center">
+      <a href="{{ url_for('economy_ledger') }}" class="text-decoration-none text-reset">
+      <div class="stat-card border rounded p-3 text-center clickable-stat">
         <div class="text-primary mb-1">📊</div>
         <div class="small text-muted mb-1">Net Profit</div>
         <div class="h3 mb-0 fw-bold text-primary">${{ '%.0f'|format(net_profit) }}</div>
       </div>
+      </a>
     </div>
     <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="stat-card border rounded p-3 text-center">
+      <a href="{{ url_for('cargo_history') }}" class="text-decoration-none text-reset">
+      <div class="stat-card border rounded p-3 text-center clickable-stat">
         <div class="text-info mb-1">📦</div>
         <div class="small text-muted mb-1">Cargo Manifests</div>
         <div class="h3 mb-0 fw-bold">{{ counts.cargo_manifests }}</div>
       </div>
+      </a>
     </div>
     <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="stat-card border rounded p-3 text-center">
+      <a href="{{ url_for('dispatch_history') }}" class="text-decoration-none text-reset">
+      <div class="stat-card border rounded p-3 text-center clickable-stat">
         <div class="text-warning mb-1">📋</div>
         <div class="small text-muted mb-1">Dispatch Releases</div>
         <div class="h3 mb-0 fw-bold">{{ counts.dispatch_releases }}</div>
       </div>
+      </a>
     </div>
     <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="stat-card border rounded p-3 text-center">
+      <a href="{{ url_for('crew_history') }}" class="text-decoration-none text-reset">
+      <div class="stat-card border rounded p-3 text-center clickable-stat">
         <div class="text-secondary mb-1">👥</div>
         <div class="small text-muted mb-1">Crew Logs</div>
         <div class="h3 mb-0 fw-bold">{{ counts.crew_logs }}</div>
       </div>
+      </a>
     </div>
     <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="stat-card border rounded p-3 text-center">
+      <a href="{{ url_for('incident') }}" class="text-decoration-none text-reset">
+      <div class="stat-card border rounded p-3 text-center clickable-stat">
         <div class="text-danger mb-1">⚠️</div>
         <div class="small text-muted mb-1">Open Incidents</div>
         <div class="h3 mb-0 fw-bold">{{ counts.incidents }}</div>
       </div>
+      </a>
     </div>
     <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="stat-card border rounded p-3 text-center">
+      <a href="{{ url_for('notams_history') }}" class="text-decoration-none text-reset">
+      <div class="stat-card border rounded p-3 text-center clickable-stat">
         <div class="mb-1">📢</div>
         <div class="small text-muted mb-1">NOTAMs</div>
         <div class="h3 mb-0 fw-bold">{{ counts.company_notams }}</div>
       </div>
+      </a>
     </div>
     <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="stat-card border rounded p-3 text-center">
+      <a href="{{ url_for('fleet_history') }}" class="text-decoration-none text-reset">
+      <div class="stat-card border rounded p-3 text-center clickable-stat">
         <div class="mb-1">✈️</div>
         <div class="small text-muted mb-1">Fleet Aircraft</div>
         <div class="h3 mb-0 fw-bold">{{ counts.fleet_entries }}</div>
       </div>
+      </a>
     </div>
   </div>
 </div>
