@@ -1,52 +1,66 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="mb-4 p-4 bg-white rounded shadow-sm">
-  <div class="mb-2">
-    <h1 class="h3 mb-0">Palm Route Air – Operations Console</h1>
+  <div class="mb-3">
+    <h1 class="h2 mb-1 fw-bold">🏛️ Operations Console</h1>
+    <p class="text-muted mb-0 small">Real-time operational metrics and recent activity</p>
   </div>
-  <p class="text-muted mb-3">Quick snapshot of current operational data. Use the navigation or buttons to manage records.</p>
   {% include '_flow_help.html' %}
-  <div class="row g-3">
-    <div class="col-sm-6 col-md-4 col-lg-2">
-      <div class="border rounded p-2 text-center bg-light">
-        <div class="fw-bold">Completed Profit</div>
-        <div class="display-6 fs-2">${{ '%.0f'|format(completed_profit) }}</div>
+  <div class="row g-3 mt-2">
+    <div class="col-sm-6 col-md-4 col-lg-3">
+      <div class="stat-card border rounded p-3 text-center">
+        <div class="text-success mb-1">💵</div>
+        <div class="small text-muted mb-1">Completed Profit</div>
+        <div class="h3 mb-0 fw-bold text-success">${{ '%.0f'|format(completed_profit) }}</div>
       </div>
     </div>
-    <div class="col-sm-6 col-md-4 col-lg-2">
-      <div class="border rounded p-2 text-center bg-light">
-        <div class="fw-bold">Net Profit</div>
-        <div class="display-6 fs-2">${{ '%.0f'|format(net_profit) }}</div>
+    <div class="col-sm-6 col-md-4 col-lg-3">
+      <div class="stat-card border rounded p-3 text-center">
+        <div class="text-primary mb-1">📊</div>
+        <div class="small text-muted mb-1">Net Profit</div>
+        <div class="h3 mb-0 fw-bold text-primary">${{ '%.0f'|format(net_profit) }}</div>
       </div>
     </div>
-    <div class="col-sm-6 col-md-4 col-lg-2">
-      <div class="border rounded p-2 text-center bg-light">
-        <div class="fw-bold">Cargo</div>
-        <div class="display-6 fs-2">{{ counts.cargo_manifests }}</div>
+    <div class="col-sm-6 col-md-4 col-lg-3">
+      <div class="stat-card border rounded p-3 text-center">
+        <div class="text-info mb-1">📦</div>
+        <div class="small text-muted mb-1">Cargo Manifests</div>
+        <div class="h3 mb-0 fw-bold">{{ counts.cargo_manifests }}</div>
       </div>
     </div>
-    <div class="col-sm-6 col-md-4 col-lg-2">
-      <div class="border rounded p-2 text-center bg-light">
-        <div class="fw-bold">Dispatch</div>
-        <div class="display-6 fs-2">{{ counts.dispatch_releases }}</div>
+    <div class="col-sm-6 col-md-4 col-lg-3">
+      <div class="stat-card border rounded p-3 text-center">
+        <div class="text-warning mb-1">📋</div>
+        <div class="small text-muted mb-1">Dispatch Releases</div>
+        <div class="h3 mb-0 fw-bold">{{ counts.dispatch_releases }}</div>
       </div>
     </div>
-    <div class="col-sm-6 col-md-4 col-lg-2">
-      <div class="border rounded p-2 text-center bg-light">
-        <div class="fw-bold">Crew Logs</div>
-        <div class="display-6 fs-2">{{ counts.crew_logs }}</div>
+    <div class="col-sm-6 col-md-4 col-lg-3">
+      <div class="stat-card border rounded p-3 text-center">
+        <div class="text-secondary mb-1">👥</div>
+        <div class="small text-muted mb-1">Crew Logs</div>
+        <div class="h3 mb-0 fw-bold">{{ counts.crew_logs }}</div>
       </div>
     </div>
-    <div class="col-sm-6 col-md-4 col-lg-2">
-      <div class="border rounded p-2 text-center bg-light">
-        <div class="fw-bold">NOTAMs</div>
-        <div class="display-6 fs-2">{{ counts.company_notams }}</div>
+    <div class="col-sm-6 col-md-4 col-lg-3">
+      <div class="stat-card border rounded p-3 text-center">
+        <div class="text-danger mb-1">⚠️</div>
+        <div class="small text-muted mb-1">Open Incidents</div>
+        <div class="h3 mb-0 fw-bold">{{ counts.incidents }}</div>
       </div>
     </div>
-    <div class="col-sm-6 col-md-4 col-lg-2">
-      <div class="border rounded p-2 text-center bg-light">
-        <div class="fw-bold">Fleet</div>
-        <div class="display-6 fs-2">{{ counts.fleet_entries }}</div>
+    <div class="col-sm-6 col-md-4 col-lg-3">
+      <div class="stat-card border rounded p-3 text-center">
+        <div class="mb-1">📢</div>
+        <div class="small text-muted mb-1">NOTAMs</div>
+        <div class="h3 mb-0 fw-bold">{{ counts.company_notams }}</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-md-4 col-lg-3">
+      <div class="stat-card border rounded p-3 text-center">
+        <div class="mb-1">✈️</div>
+        <div class="small text-muted mb-1">Fleet Aircraft</div>
+        <div class="h3 mb-0 fw-bold">{{ counts.fleet_entries }}</div>
       </div>
     </div>
   </div>
@@ -55,9 +69,12 @@
 <div class="row g-4">
   <div class="col-md-6">
     <div class="bg-white rounded shadow-sm p-3">
-      <h2 class="h5">Recent Cargo Manifests</h2>
-      <table class="table table-sm table-striped mb-0">
-        <thead><tr><th>Date</th><th>Flight</th><th>Aircraft</th><th>Weight</th></tr></thead>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 mb-0">📦 Recent Cargo Manifests</h2>
+        <a href="{{ url_for('cargo') }}" class="btn btn-sm btn-primary">+ New</a>
+      </div>
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light"><tr><th>Date</th><th>Flight</th><th>Aircraft</th><th>Weight</th></tr></thead>
         <tbody>
         {% for m in manifests %}
           <tr>
@@ -75,9 +92,12 @@
   </div>
   <div class="col-md-6">
     <div class="bg-white rounded shadow-sm p-3">
-      <h2 class="h5">Recent Dispatch Releases</h2>
-      <table class="table table-sm table-striped mb-0">
-        <thead><tr><th>Date</th><th>Flight</th><th>Aircraft</th><th>Route</th></tr></thead>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 mb-0">📋 Recent Dispatch Releases</h2>
+        <a href="{{ url_for('dispatch') }}" class="btn btn-sm btn-primary">+ New</a>
+      </div>
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light"><tr><th>Date</th><th>Flight</th><th>Aircraft</th><th>Route</th></tr></thead>
         <tbody>
         {% for d in releases %}
           <tr>
@@ -95,9 +115,12 @@
   </div>
   <div class="col-md-6">
     <div class="bg-white rounded shadow-sm p-3">
-      <h2 class="h5">Recent Crew Logs</h2>
-      <table class="table table-sm table-striped mb-0">
-        <thead><tr><th>Date</th><th>Flight</th><th>Aircraft</th><th>Block Time</th></tr></thead>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 mb-0">👥 Recent Crew Logs</h2>
+        <a href="{{ url_for('crew') }}" class="btn btn-sm btn-primary">+ New</a>
+      </div>
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light"><tr><th>Date</th><th>Flight</th><th>Aircraft</th><th>Block Time</th></tr></thead>
         <tbody>
         {% for c in logs %}
           <tr>
@@ -115,9 +138,12 @@
   </div>
   <div class="col-md-6">
     <div class="bg-white rounded shadow-sm p-3">
-      <h2 class="h5">Recent Company NOTAMs</h2>
-      <table class="table table-sm table-striped mb-0">
-        <thead><tr><th>ID</th><th>Subject</th><th>Status</th></tr></thead>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 mb-0">📢 Recent Company NOTAMs</h2>
+        <a href="{{ url_for('notams') }}" class="btn btn-sm btn-primary">+ New</a>
+      </div>
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light"><tr><th>ID</th><th>Subject</th><th>Status</th></tr></thead>
         <tbody>
         {% for n in notams %}
           <tr>
@@ -134,9 +160,12 @@
   </div>
   <div class="col-md-6">
     <div class="bg-white rounded shadow-sm p-3">
-      <h2 class="h5">Recent Incidents</h2>
-      <table class="table table-sm table-striped mb-0">
-        <thead><tr><th>Date</th><th>Title</th><th>Severity</th><th>Cost</th></tr></thead>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 mb-0">⚠️ Recent Incidents</h2>
+        <a href="{{ url_for('incident') }}" class="btn btn-sm btn-danger">+ Report</a>
+      </div>
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light"><tr><th>Date</th><th>Title</th><th>Severity</th><th>Cost</th></tr></thead>
         <tbody>
         {% for inc in incidents %}
           <tr>
@@ -154,9 +183,12 @@
   </div>
   <div class="col-12">
     <div class="bg-white rounded shadow-sm p-3">
-      <h2 class="h5">Fleet</h2>
-      <table class="table table-sm table-striped mb-0">
-        <thead><tr><th>Registration</th><th>Type</th><th>Base</th><th>Status</th><th>MTOW</th><th>Useful Load</th></tr></thead>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 mb-0">✈️ Fleet Aircraft</h2>
+        <a href="{{ url_for('fleet') }}" class="btn btn-sm btn-primary">+ New</a>
+      </div>
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light"><tr><th>Registration</th><th>Type</th><th>Base</th><th>Status</th><th>MTOW</th><th>Useful Load</th></tr></thead>
         <tbody>
         {% for f in fleet_entries %}
           <tr>
