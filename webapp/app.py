@@ -5,6 +5,7 @@ import os
 import re
 import xml.etree.ElementTree as ET
 from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
 
 # Application version
 APP_VERSION = 'v1.0.0'
@@ -257,6 +258,44 @@ with app.app_context():
         default_emp.set_password('pilot')  # default password
         db.session.add(default_emp)
         db.session.commit()
+
+# --- Access Control Helpers -------------------------------------------------
+MANAGEMENT_ROLES = {'Manager', 'Administrator'}
+
+def login_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not session.get('employee_id'):
+            flash('Login required.', 'error')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return wrapper
+
+def roles_required(*roles):
+    roles_set = set(roles)
+    @wraps(roles_required)
+    def decorator(f):
+        @wraps(f)
+        def inner(*args, **kwargs):
+            if not session.get('employee_id'):
+                flash('Login required.', 'error')
+                return redirect(url_for('login'))
+            emp = Employee.query.get(session['employee_id'])
+            if not emp or (emp.role not in roles_set and emp.role != 'Administrator'):
+                flash('Insufficient permissions.', 'error')
+                return redirect(url_for('index'))
+            return f(*args, **kwargs)
+        return inner
+    return decorator
+
+@app.before_request
+def enforce_login_globally():
+    # Allow unauthenticated access only to login/logout/static assets
+    public_endpoints = {'login', 'logout', 'static'}
+    if request.endpoint in public_endpoints or request.endpoint is None:
+        return
+    if not session.get('employee_id'):
+        return redirect(url_for('login'))
 
 
 # Make settings available in all templates
@@ -661,6 +700,7 @@ if _needs_seeding:
 
 
 @app.route('/')
+@login_required
 def index():
     manifests = CargoManifest.query.order_by(CargoManifest.id.desc()).limit(5).all()
     releases = DispatchRelease.query.order_by(DispatchRelease.id.desc()).limit(5).all()
@@ -705,6 +745,7 @@ def index():
 
 
 @app.route('/cargo', methods=['GET', 'POST'])
+@login_required
 def cargo():
     if request.method == 'POST':
         manifest = CargoManifest(
@@ -769,12 +810,14 @@ def cargo():
 
 
 @app.route('/incidents')
+@login_required
 def incident_history():
     incidents = Incident.query.order_by(Incident.id.desc()).all()
     return render_template('incident_history.html', incidents=incidents)
 
 
 @app.route('/incident', methods=['GET', 'POST'])
+@login_required
 def incident():
     if request.method == 'POST':
         date = request.form.get('date') or datetime.date.today().isoformat()
@@ -824,6 +867,7 @@ def incident():
 
 
 @app.route('/incident/<int:id>', methods=['GET', 'POST'])
+@login_required
 def incident_detail(id):
     inc = Incident.query.get_or_404(id)
     if request.method == 'POST':
@@ -840,12 +884,14 @@ def incident_detail(id):
 
 
 @app.route('/cargo/history')
+@login_required
 def cargo_history():
     manifests = CargoManifest.query.order_by(CargoManifest.id.desc()).all()
     return render_template('cargo_history.html', manifests=manifests)
 
 
 @app.route('/dispatch', methods=['GET', 'POST'])
+@roles_required('Manager', 'Administrator')
 def dispatch():
     if request.method == 'POST':
         fleet_entry_id = request.form.get('fleet_entry_id') or None
@@ -1014,6 +1060,7 @@ def dispatch():
     return render_template('dispatch_form.html', defaults=defaults, cargo_manifest_options=cargo_manifest_options, fleet_entry_options=fleet_entry_options)
 
 @app.route('/dispatch/<int:id>')
+@login_required
 def dispatch_detail(id):
     d = DispatchRelease.query.get_or_404(id)
     linked_manifests = d.cargo_manifests.order_by(CargoManifest.id.desc()).all()
@@ -1025,6 +1072,7 @@ def dispatch_detail(id):
     return render_template('dispatch_detail.html', d=d, linked_manifests=linked_manifests, crew_logs=crew_logs, pln=pln_data, fin_summary={'revenue':revenue,'costs':costs,'profit':profit,'distance_nm':distance_nm})
 
 @app.route('/dispatch/<int:id>/simbrief')
+@login_required
 def dispatch_simbrief(id):
     d = DispatchRelease.query.get_or_404(id)
     import urllib.parse
@@ -1058,6 +1106,7 @@ def dispatch_simbrief(id):
     return redirect(url)
 
 @app.route('/dispatch/<int:id>/edit', methods=['GET', 'POST'])
+@roles_required('Manager', 'Administrator')
 def dispatch_edit(id):
     d = DispatchRelease.query.get_or_404(id)
     if request.method == 'POST':
@@ -1223,6 +1272,7 @@ def dispatch_edit(id):
     return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id, cargo_manifest_options=cargo_manifest_options, linked_manifests=linked_manifests, crew_logs=crew_logs, fleet_entry_options=fleet_entry_options)
 
 @app.route('/dispatch/<int:id>/toggle_complete', methods=['POST'])
+@roles_required('Manager', 'Administrator')
 def dispatch_toggle_complete(id):
     d = DispatchRelease.query.get_or_404(id)
     d.completed = 0 if d.completed == 1 else 1
@@ -1231,6 +1281,7 @@ def dispatch_toggle_complete(id):
     return redirect(url_for('dispatch_detail', id=d.id))
 
 @app.route('/economy')
+@login_required
 def economy_ledger():
     acct = CompanyAccount.query.first()
     txns = Transaction.query.order_by(Transaction.timestamp.desc()).limit(200).all()
@@ -1238,6 +1289,7 @@ def economy_ledger():
 
 
 @app.route('/settings', methods=['GET', 'POST'])
+@roles_required('Manager', 'Administrator')
 def settings():
     settings_obj = AppSettings.query.first()
     if not settings_obj:
@@ -1284,6 +1336,7 @@ def settings():
     return render_template('settings.html', settings=settings_obj)
 
 @app.route('/reset_game', methods=['POST'])
+@roles_required('Administrator')
 def reset_game():
     """Reset the entire game database and optionally seed with sample data"""
     try:
@@ -1324,6 +1377,7 @@ def reset_game():
 
 
 @app.route('/dispatch/<int:id>/briefing_pdf')
+@login_required
 def dispatch_briefing_pdf(id):
     d = DispatchRelease.query.get_or_404(id)
     if not d.briefing_pdf_filename:
@@ -1335,6 +1389,7 @@ def dispatch_briefing_pdf(id):
     return send_from_directory(brief_dir, d.briefing_pdf_filename, mimetype='application/pdf')
 
 @app.route('/dispatch/<int:dispatch_id>/unlink_manifest/<int:manifest_id>', methods=['POST'])
+@roles_required('Manager', 'Administrator')
 def dispatch_unlink_manifest(dispatch_id, manifest_id):
     d = DispatchRelease.query.get_or_404(dispatch_id)
     m = CargoManifest.query.get_or_404(manifest_id)
@@ -1356,12 +1411,14 @@ def dispatch_unlink_manifest(dispatch_id, manifest_id):
 
 
 @app.route('/dispatch/history')
+@login_required
 def dispatch_history():
     releases = DispatchRelease.query.order_by(DispatchRelease.id.desc()).all()
     return render_template('dispatch_history.html', releases=releases)
 
 
 @app.route('/crew', methods=['GET', 'POST'])
+@login_required
 def crew():
     if request.method == 'POST':
         log = CrewLog(
@@ -1428,12 +1485,14 @@ def crew():
 
 
 @app.route('/crew/history')
+@login_required
 def crew_history():
     logs = CrewLog.query.order_by(CrewLog.id.desc()).all()
     return render_template('crew_history.html', logs=logs)
 
 
 @app.route('/notams', methods=['GET', 'POST'])
+@login_required
 def notams():
     if request.method == 'POST':
         notam = CompanyNotam(
@@ -1450,12 +1509,14 @@ def notams():
 
 
 @app.route('/notams/history')
+@login_required
 def notams_history():
     notams = CompanyNotam.query.order_by(CompanyNotam.id.desc()).all()
     return render_template('notams_history.html', notams=notams)
 
 
 @app.route('/fleet', methods=['GET', 'POST'])
+@roles_required('Manager', 'Administrator')
 def fleet():
     if request.method == 'POST':
         entry = FleetEntry(
@@ -1503,12 +1564,14 @@ def fleet():
 
 
 @app.route('/fleet/history')
+@login_required
 def fleet_history():
     entries = FleetEntry.query.order_by(FleetEntry.id.desc()).all()
     return render_template('fleet_history.html', entries=entries)
 
 # Delete routes (POST only)
 @app.route('/cargo/delete/<int:id>', methods=['POST'])
+@roles_required('Manager', 'Administrator')
 def delete_cargo(id):
     obj = CargoManifest.query.get(id)
     if obj:
@@ -1517,6 +1580,7 @@ def delete_cargo(id):
     return redirect(url_for('cargo_history'))
 
 @app.route('/dispatch/delete/<int:id>', methods=['POST'])
+@roles_required('Manager', 'Administrator')
 def delete_dispatch(id):
     obj = DispatchRelease.query.get(id)
     if obj:
@@ -1525,6 +1589,7 @@ def delete_dispatch(id):
     return redirect(url_for('dispatch_history'))
 
 @app.route('/crew/delete/<int:id>', methods=['POST'])
+@roles_required('Manager', 'Administrator')
 def delete_crew(id):
     obj = CrewLog.query.get(id)
     if obj:
@@ -1533,6 +1598,7 @@ def delete_crew(id):
     return redirect(url_for('crew_history'))
 
 @app.route('/notams/delete/<int:id>', methods=['POST'])
+@roles_required('Manager', 'Administrator')
 def delete_notam(id):
     obj = CompanyNotam.query.get(id)
     if obj:
@@ -1541,6 +1607,7 @@ def delete_notam(id):
     return redirect(url_for('notams_history'))
 
 @app.route('/fleet/delete/<int:id>', methods=['POST'])
+@roles_required('Manager', 'Administrator')
 def delete_fleet(id):
     obj = FleetEntry.query.get(id)
     if obj:
@@ -1549,6 +1616,7 @@ def delete_fleet(id):
     return redirect(url_for('fleet_history'))
 
 @app.route('/fleet/<int:id>/edit', methods=['GET','POST'])
+@roles_required('Manager', 'Administrator')
 def fleet_edit(id):
     f = FleetEntry.query.get_or_404(id)
     if request.method == 'POST':
@@ -1583,6 +1651,7 @@ def fleet_edit(id):
 
 # Detail routes & editing for cargo
 @app.route('/cargo/<int:id>', methods=['GET','POST'])
+@login_required
 def cargo_detail(id):
     m = CargoManifest.query.get_or_404(id)
     if request.method == 'POST':
@@ -1646,6 +1715,7 @@ def cargo_detail(id):
     return render_template('cargo_detail.html', m=m, dispatch_options=dispatch_options, editing=editing_flag, signoffs=signoffs)
 
 @app.route('/cargo/<int:id>/unlink_dispatch', methods=['POST'])
+@roles_required('Manager', 'Administrator')
 def cargo_unlink_dispatch(id):
     m = CargoManifest.query.get_or_404(id)
     if m.dispatch_release_id:
@@ -1667,6 +1737,7 @@ def cargo_unlink_dispatch(id):
     return redirect(url_for('cargo_detail', id=id))
 
 @app.route('/crew/<int:id>')
+@login_required
 def crew_detail(id):
     c = CrewLog.query.get_or_404(id)
     dispatch_ref = DispatchRelease.query.get(c.dispatch_release_id) if c.dispatch_release_id else None
@@ -1675,6 +1746,7 @@ def crew_detail(id):
     return render_template('crew_detail.html', c=c, dispatch_ref=dispatch_ref, cargo_ref=cargo_ref, signoffs=signoffs)
 
 @app.route('/crew/<int:id>/edit', methods=['GET','POST'])
+@roles_required('Manager', 'Administrator')
 def crew_edit(id):
     c = CrewLog.query.get_or_404(id)
     if request.method == 'POST':
@@ -1724,11 +1796,13 @@ def crew_edit(id):
     return render_template('crew_edit.html', c=c, defaults=defaults)
 
 @app.route('/notams/<int:id>')
+@login_required
 def notam_detail(id):
     n = CompanyNotam.query.get_or_404(id)
     return render_template('notam_detail.html', n=n)
 
 @app.route('/fleet/<int:id>')
+@login_required
 def fleet_detail(id):
     f = FleetEntry.query.get_or_404(id)
     return render_template('fleet_detail.html', f=f)
@@ -1772,6 +1846,23 @@ def profile():
     cargo_signed = CargoManifestSignOff.query.filter_by(employee_id=emp.id).count()
     crew_signed = CrewLogSignOff.query.filter_by(employee_id=emp.id).count()
     return render_template('profile.html', emp=emp, stats={'cargo_signed': cargo_signed, 'crew_signed': crew_signed})
+
+@app.route('/employees', methods=['GET','POST'])
+@roles_required('Manager', 'Administrator')
+def employees():
+    if request.method == 'POST':
+        target_id = request.form.get('employee_id')
+        new_role = request.form.get('role')
+        if target_id and new_role:
+            e = Employee.query.get(int(target_id))
+            if e:
+                e.role = new_role
+                db.session.commit()
+                flash('Employee role updated.', 'success')
+        return redirect(url_for('employees'))
+    emps = Employee.query.order_by(Employee.name.asc()).all()
+    roles = ['Pilot','Manager','Administrator']
+    return render_template('employees.html', employees=emps, roles=roles)
 
 def _require_login():
     if not session.get('employee_id'):

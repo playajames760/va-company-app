@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <h2 class="h5 mb-3">Employees & Roles</h2>
+  <table class="table table-sm align-middle mb-3">
+    <thead class="pra-thead">
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Hire Date</th>
+        <th>Active</th>
+        <th>Change Role</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in employees %}
+        <tr>
+          <td>{{ e.id }}</td>
+          <td>{{ e.name }}</td>
+          <td>{{ e.email }}</td>
+          <td><span class="badge text-bg-primary">{{ e.role }}</span></td>
+          <td>{{ e.hire_date }}</td>
+          <td>{{ 'Yes' if e.active==1 else 'No' }}</td>
+          <td>
+            <form method="post" class="d-flex gap-1">
+              <input type="hidden" name="employee_id" value="{{ e.id }}">
+              <select name="role" class="form-select form-select-sm">
+                {% for r in roles %}
+                  <option value="{{ r }}" {% if e.role==r %}selected{% endif %}>{{ r }}</option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-sm btn-outline-success">Save</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">Home</a>
+</div>
+{% endblock %}

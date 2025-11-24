@@ -234,6 +234,9 @@
             <li class="nav-item"><a class="nav-link" href="{{ url_for('fleet_history') }}">✈️ Fleet</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('economy_ledger') }}">🏦 Bank</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('settings') }}">⚙️ Settings</a></li>
+            {% if current_employee and current_employee.role in ['Manager','Administrator'] %}
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('employees') }}">🧑‍✈️ Employees</a></li>
+            {% endif %}
           </ul>
           <button class="theme-toggle text-white" onclick="toggleTheme()" title="Toggle theme">
             <span id="theme-icon">🌙</span>
