@@ -3,15 +3,15 @@
 <div class="p-4 bg-white rounded shadow-sm">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0">⚙️ Application Settings</h2>
-    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">Back to Dashboard</a>
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
   </div>
   <p class="text-muted small mb-4">Configure your company branding, difficulty level, and realism parameters.</p>
 
   <form method="post" enctype="multipart/form-data">
     <!-- Company Branding -->
-    <div class="card mb-4">
-      <div class="card-header">
-        <h3 class="h6 mb-0">🏢 Company Branding</h3>
+    <div class="card mb-4" style="border-color: var(--bs-border-color);">
+      <div class="card-header" style="background-color: rgba(13, 110, 253, 0.08); border-bottom: 1px solid var(--bs-border-color);">
+        <h3 class="h6 mb-0">🏛️ Company Branding</h3>
       </div>
       <div class="card-body">
         <div class="row g-3">
@@ -36,8 +36,8 @@
     </div>
 
     <!-- Game Difficulty -->
-    <div class="card mb-4">
-      <div class="card-header">
+    <div class="card mb-4" style="border-color: var(--bs-border-color);">
+      <div class="card-header" style="background-color: rgba(13, 110, 253, 0.08); border-bottom: 1px solid var(--bs-border-color);">
         <h3 class="h6 mb-0">🎮 Difficulty & Realism</h3>
       </div>
       <div class="card-body">
@@ -76,8 +76,8 @@
     </div>
 
     <!-- Display Preferences -->
-    <div class="card mb-4">
-      <div class="card-header">
+    <div class="card mb-4" style="border-color: var(--bs-border-color);">
+      <div class="card-header" style="background-color: rgba(13, 110, 253, 0.08); border-bottom: 1px solid var(--bs-border-color);">
         <h3 class="h6 mb-0">📊 Display Preferences</h3>
       </div>
       <div class="card-body">
@@ -112,11 +112,4 @@
     </div>
   </form>
 </div>
-
-<style>
-.card-header {
-  background-color: rgba(13, 110, 253, 0.08);
-  border-bottom: 1px solid var(--bs-border-color);
-}
-</style>
 {% endblock %}
