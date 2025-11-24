@@ -20,7 +20,7 @@
   </dl>
   <div class="mt-4 d-flex justify-content-end">
     <form action="{{ url_for('delete_fleet', id=f.id) }}" method="post" onsubmit="return confirm('Delete this fleet entry?');" class="d-inline">
-      <button class="btn btn-outline-danger btn-sm">Delete Entry</button>
+      <button class="btn btn-outline-danger btn-sm">Delete</button>
     </form>
   </div>
   {% if current_employee and current_employee.role in ['Manager','Administrator'] %}

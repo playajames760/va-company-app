@@ -18,7 +18,7 @@
   </dl>
   <div class="mt-4 d-flex justify-content-end">
     <form action="{{ url_for('delete_notam', id=n.id) }}" method="post" class="d-inline" onsubmit="return confirm('Delete this NOTAM?');">
-      <button class="btn btn-outline-danger btn-sm">Delete NOTAM</button>
+      <button class="btn btn-outline-danger btn-sm">Delete</button>
     </form>
   </div>
   {% if current_employee and current_employee.role in ['Manager','Administrator'] %}

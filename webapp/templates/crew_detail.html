@@ -58,7 +58,7 @@
       </form>
     {% endif %}
     <form action="{{ url_for('delete_crew', id=c.id) }}" method="post" class="d-inline" onsubmit="return confirm('Delete this crew log entry?');">
-      <button class="btn btn-outline-danger btn-sm">Delete Log</button>
+      <button class="btn btn-outline-danger btn-sm">Delete</button>
     </form>
   </div>
   {% if current_employee and current_employee.role in ['Manager','Administrator'] %}
