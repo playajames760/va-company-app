@@ -164,6 +164,10 @@
       {% block content %}{% endblock %}
     </main>
 
+    <footer class="container text-center pb-3">
+      <small class="text-muted">{{ app_settings.company_name if app_settings else 'Palm Route Air' }} {{ app_version }}</small>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
       // Theme toggle functionality

@@ -5,6 +5,9 @@ import os
 import re
 import xml.etree.ElementTree as ET
 
+# Application version
+APP_VERSION = 'v1.0.0'
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'replace-this-with-env-secret'
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -127,6 +130,10 @@ class AppSettings(db.Model):
     currency_symbol = db.Column(db.String(5), default='$')
     distance_unit = db.Column(db.String(10), default='NM')  # NM or KM
     weight_unit = db.Column(db.String(10), default='lbs')  # lbs or kg
+    show_workflow_help = db.Column(db.Integer, default=1)  # 1 = show, 0 = hide
+
+# Forward declaration - will be populated after helper functions are defined
+_needs_seeding = False
 
 # Create tables after all model classes have been declared
 with app.app_context():
@@ -172,6 +179,14 @@ with app.app_context():
     if CompanyAccount.query.first() is None:
         db.session.add(CompanyAccount(balance=0.0))
         db.session.commit()
+    
+    # Add show_workflow_help to app_settings if missing (BEFORE querying AppSettings)
+    insp_settings = db.session.execute(db.text("PRAGMA table_info(app_settings)")).fetchall()
+    settings_cols = {row[1] for row in insp_settings}
+    if 'show_workflow_help' not in settings_cols:
+        db.session.execute(db.text("ALTER TABLE app_settings ADD COLUMN show_workflow_help INTEGER DEFAULT 1"))
+        db.session.commit()
+    
     # Ensure single app settings row exists
     if AppSettings.query.first() is None:
         db.session.add(AppSettings(
@@ -181,7 +196,8 @@ with app.app_context():
             realism_destination_penalty=0.25,
             currency_symbol='$',
             distance_unit='NM',
-            weight_unit='lbs'
+            weight_unit='lbs',
+            show_workflow_help=1
         ))
         db.session.commit()
     # Runtime add fuel_used to crew_log if missing
@@ -196,6 +212,11 @@ with app.app_context():
     if not insp_incident:
         # Table will be created by db.create_all for new DBs; for existing DBs without it, nothing else required.
         pass
+    
+    # Seed sample data for testing (only if database is empty)
+    if FleetEntry.query.count() == 0:
+        _needs_seeding = True
+        print("⏳ Database is empty - will seed sample data after initialization")
 
 
 # Make settings available in all templates
@@ -207,7 +228,7 @@ def inject_settings():
             settings = AppSettings(company_name='Palm Route Air')
     except:
         settings = None
-    return dict(app_settings=settings)
+    return dict(app_settings=settings, app_version=APP_VERSION)
 
 
 # --- Helper Parsers -------------------------------------------------------
@@ -308,6 +329,162 @@ ECONOMY_CONSTANTS = {
     'MAINTENANCE_FLAT': 110.0,             # flat maintenance cost per flight
     'REVENUE_PER_NM': 1.15                # distance-based revenue component per nautical mile
 }
+
+def seed_sample_data():
+    """Seed the database with sample data for testing and new games"""
+    # Sample fleet entries
+    fleet_sample = [
+        FleetEntry(aircraft_type='Cessna 172', registration='N12345', base='KPOC', status='Available', max_takeoff_weight='2450', useful_load='890', notes='Primary trainer aircraft'),
+        FleetEntry(aircraft_type='Cessna 208 Caravan', registration='N208PA', base='KPOC', status='Available', max_takeoff_weight='8750', useful_load='3500', notes='Cargo hauler'),
+        FleetEntry(aircraft_type='Piper PA-28 Cherokee', registration='N4567P', base='KCRQ', status='Maintenance', max_takeoff_weight='2450', useful_load='930', notes='Under scheduled maintenance')
+    ]
+    db.session.add_all(fleet_sample)
+    db.session.commit()
+    
+    # Sample NOTAMs
+    notam_sample = [
+        CompanyNotam(notam_id='PRA-001', subject='Fuel price increase at KCRQ', area='Operations', text='Effective immediately, fuel costs at KCRQ have increased by 8% due to supply chain issues.', status='Active'),
+        CompanyNotam(notam_id='PRA-002', subject='New VFR reporting point established', area='Navigation', text='New reporting point VISTA established 5NM north of KPOC for VFR traffic coordination.', status='Active')
+    ]
+    db.session.add_all(notam_sample)
+    db.session.commit()
+    
+    # Sample dispatch releases with linked fleet
+    today = datetime.date.today()
+    yesterday = today - datetime.timedelta(days=1)
+    fleet1 = fleet_sample[0]
+    fleet2 = fleet_sample[1]
+    
+    dispatch_sample = [
+        DispatchRelease(
+            date=yesterday.isoformat(),
+            flight_id='PRA101',
+            aircraft=f'{fleet1.aircraft_type} {fleet1.registration}',
+            fleet_entry_id=fleet1.id,
+            departure='KPOC',
+            destination='KCRQ',
+            offblocks='1430Z',
+            arrival='1545Z',
+            route='KPOC direct KCRQ via coastline, VFR 3500ft',
+            payload_planned='650',
+            fuel_planned='28',
+            cargo_plan='General cargo and mail',
+            alt_airports='KOKB, KSNA',
+            weather_brief='VFR conditions, light winds from 270, visibility 10+ SM',
+            special_notes='First flight of the day, pre-flight complete',
+            completed=1
+        ),
+        DispatchRelease(
+            date=today.isoformat(),
+            flight_id='PRA102',
+            aircraft=f'{fleet2.aircraft_type} {fleet2.registration}',
+            fleet_entry_id=fleet2.id,
+            departure='KPOC',
+            destination='KSBP',
+            offblocks='0800Z',
+            arrival='0930Z',
+            route='KPOC V23 BASET V27 KSBP',
+            payload_planned='2200',
+            fuel_planned='85',
+            cargo_plan='Priority freight shipment',
+            alt_airports='KSBA, KPRB',
+            weather_brief='MVFR becoming VFR, scattered at 1500ft, winds 310/12',
+            special_notes='Heavy cargo - check weight and balance carefully',
+            completed=0
+        )
+    ]
+    db.session.add_all(dispatch_sample)
+    db.session.commit()
+    
+    # Sample cargo manifests linked to dispatches
+    cargo_sample = [
+        CargoManifest(
+            date=yesterday.isoformat(),
+            departure='KPOC',
+            arrival='KCRQ',
+            total_weight='680',
+            pieces='12',
+            notes='Mixed cargo: 8 parcels general freight, 4 mail bags',
+            dispatch_release_id=dispatch_sample[0].id
+        ),
+        CargoManifest(
+            date=today.isoformat(),
+            departure='KPOC',
+            arrival='KSBP',
+            total_weight='2150',
+            pieces='6',
+            notes='Industrial equipment parts - fragile, secure properly',
+            dispatch_release_id=dispatch_sample[1].id
+        )
+    ]
+    db.session.add_all(cargo_sample)
+    
+    # Update actual cargo weight on dispatches
+    dispatch_sample[0].actual_cargo_weight = '680'
+    dispatch_sample[1].actual_cargo_weight = '2150'
+    db.session.commit()
+    
+    # Sample crew logs
+    crew_sample = [
+        CrewLog(
+            date=yesterday.isoformat(),
+            flight_id='PRA101',
+            origin='KPOC',
+            destination='KCRQ',
+            aircraft=f'{fleet1.aircraft_type} {fleet1.registration}',
+            block_off='1432Z',
+            block_on='1543Z',
+            block_time='1.18',
+            cargo_weight='680',
+            fuel_used='26.5',
+            remarks='Smooth flight, light turbulence near destination. Cargo delivered on time.',
+            dispatch_release_id=dispatch_sample[0].id,
+            cargo_manifest_id=cargo_sample[0].id
+        )
+    ]
+    db.session.add_all(crew_sample)
+    db.session.commit()
+    
+    # Generate transactions for completed dispatch
+    acct = CompanyAccount.query.first()
+    rev, cost, profit, dist = compute_dispatch_financials(dispatch_sample[0])
+    txn_revenue = Transaction(
+        type='revenue',
+        amount=rev,
+        description=f'Dispatch #{dispatch_sample[0].id} - {dispatch_sample[0].flight_id} revenue',
+        dispatch_release_id=dispatch_sample[0].id
+    )
+    txn_cost = Transaction(
+        type='expense',
+        amount=cost,
+        description=f'Dispatch #{dispatch_sample[0].id} - {dispatch_sample[0].flight_id} operational costs',
+        dispatch_release_id=dispatch_sample[0].id
+    )
+    db.session.add_all([txn_revenue, txn_cost])
+    acct.balance += profit
+    db.session.commit()
+    
+    # Sample incident
+    incident_sample = Incident(
+        date=yesterday.isoformat(),
+        title='Bird strike on departure',
+        description='Minor bird strike during takeoff roll at KPOC. No damage observed, continued flight as planned. Reported to tower and logged for maintenance inspection.',
+        severity='Minor',
+        dispatch_release_id=dispatch_sample[0].id,
+        estimated_cost=150.0,
+        resolved=1
+    )
+    db.session.add(incident_sample)
+    # Deduct incident cost from balance
+    acct.balance -= 150.0
+    txn_incident = Transaction(
+        type='expense',
+        amount=150.0,
+        description='Incident: Bird strike on departure',
+        dispatch_release_id=dispatch_sample[0].id
+    )
+    db.session.add(txn_incident)
+    db.session.commit()
 
 def compute_dispatch_financials(dispatch: DispatchRelease):
     """Compute revenue, costs, profit for a dispatch release.
@@ -433,8 +610,11 @@ def get_company_account():
         db.session.commit()
     return acct
 
-
-
+# Perform delayed seeding if needed
+if _needs_seeding:
+    with app.app_context():
+        seed_sample_data()
+        print("✅ Sample data initialized successfully!")
 
 
 @app.route('/')
@@ -1028,6 +1208,7 @@ def settings():
         settings_obj.currency_symbol = request.form.get('currency_symbol') or '$'
         settings_obj.distance_unit = request.form.get('distance_unit') or 'NM'
         settings_obj.weight_unit = request.form.get('weight_unit') or 'lbs'
+        settings_obj.show_workflow_help = 1 if request.form.get('show_workflow_help') == 'on' else 0
         
         # Realism settings - parse floats with validation
         try:
@@ -1058,6 +1239,45 @@ def settings():
         return redirect(url_for('settings'))
     
     return render_template('settings.html', settings=settings_obj)
+
+@app.route('/reset_game', methods=['POST'])
+def reset_game():
+    """Reset the entire game database and optionally seed with sample data"""
+    try:
+        # Get the seed_data option from form
+        seed_data = request.form.get('seed_data') == 'yes'
+        
+        # Delete all data from all tables (except settings which we'll reset separately)
+        Transaction.query.delete()
+        Incident.query.delete()
+        CrewLog.query.delete()
+        CargoManifest.query.delete()
+        DispatchRelease.query.delete()
+        CompanyNotam.query.delete()
+        FleetEntry.query.delete()
+        
+        # Reset company account balance to 0
+        acct = CompanyAccount.query.first()
+        if acct:
+            acct.balance = 0.0
+        else:
+            acct = CompanyAccount(balance=0.0)
+            db.session.add(acct)
+        
+        db.session.commit()
+        
+        # Seed sample data if requested
+        if seed_data:
+            seed_sample_data()
+            flash('Game reset successfully with sample data!', 'success')
+        else:
+            flash('Game reset successfully! Starting with a clean slate.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error resetting game: {str(e)}', 'error')
+    
+    return redirect(url_for('index'))
 
 
 @app.route('/dispatch/<int:id>/briefing_pdf')

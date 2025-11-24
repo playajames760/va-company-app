@@ -5,7 +5,9 @@
     <h1 class="h2 mb-1 fw-bold">🏛️ Operations Console</h1>
     <p class="text-muted mb-0 small">Real-time operational metrics and recent activity</p>
   </div>
-  {% include '_flow_help.html' %}
+  {% if app_settings and app_settings.show_workflow_help %}
+    {% include '_flow_help.html' %}
+  {% endif %}
   <div class="row g-3 mt-2">
     <div class="col-sm-6 col-md-4 col-lg-3">
       <div class="stat-card border rounded p-3 text-center">

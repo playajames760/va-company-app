@@ -102,14 +102,78 @@
             </select>
           </div>
         </div>
+        <div class="row g-3 mt-2">
+          <div class="col-12">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="show_workflow_help" id="show_workflow_help" {% if settings.show_workflow_help %}checked{% endif %}>
+              <label class="form-check-label" for="show_workflow_help">
+                Show Operational Workflow help on dashboard
+              </label>
+              <div class="form-text">Display the workflow guide card on the Operations Console.</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Save Button -->
     <div class="d-flex justify-content-between align-items-center">
       <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Cancel</a>
-      <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+      <div>
+        <button type="button" class="btn btn-danger me-2" data-bs-toggle="modal" data-bs-target="#resetGameModal">🔄 Reset Game</button>
+        <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+      </div>
     </div>
   </form>
+</div>
+
+<!-- Reset Game Modal -->
+<div class="modal fade" id="resetGameModal" tabindex="-1" aria-labelledby="resetGameModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="resetGameModalLabel">⚠️ Reset Game</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="{{ url_for('reset_game') }}">
+        <div class="modal-body">
+          <div class="alert alert-warning">
+            <strong>Warning:</strong> This will permanently delete all game data including:
+            <ul class="mb-0 mt-2">
+              <li>All dispatch releases and cargo manifests</li>
+              <li>All crew logs and flight records</li>
+              <li>All fleet entries and NOTAMs</li>
+              <li>All transactions and financial history</li>
+              <li>All incidents</li>
+            </ul>
+          </div>
+          
+          <div class="alert alert-info">
+            <strong>Note:</strong> Your settings (company name, difficulty, etc.) will be preserved.
+          </div>
+          
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="seed_data" id="seed_yes" value="yes" checked>
+            <label class="form-check-label" for="seed_yes">
+              <strong>Start with sample data</strong>
+              <div class="small text-muted">Includes 3 aircraft, 2 flights, sample cargo, and crew logs</div>
+            </label>
+          </div>
+          
+          <div class="form-check mt-2">
+            <input class="form-check-input" type="radio" name="seed_data" id="seed_no" value="no">
+            <label class="form-check-label" for="seed_no">
+              <strong>Start with clean slate</strong>
+              <div class="small text-muted">Empty database - build everything from scratch</div>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger">Reset Game</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 {% endblock %}
