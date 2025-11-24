@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">⚙️ Application Settings</h2>
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">Back to Dashboard</a>
+  </div>
+  <p class="text-muted small mb-4">Configure your company branding, difficulty level, and realism parameters.</p>
+
+  <form method="post" enctype="multipart/form-data">
+    <!-- Company Branding -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h3 class="h6 mb-0">🏢 Company Branding</h3>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Company Name</label>
+            <input type="text" name="company_name" class="form-control" value="{{ settings.company_name }}" placeholder="Palm Route Air">
+            <div class="form-text">Displayed in navbar and throughout the app.</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Company Logo (optional)</label>
+            <input type="file" name="logo_file" class="form-control" accept="image/*">
+            <div class="form-text">
+              {% if settings.logo_filename %}
+                Current: <a href="{{ url_for('static', filename='logos/' + settings.logo_filename) }}" target="_blank">{{ settings.logo_filename }}</a>
+              {% else %}
+                No logo uploaded. Upload PNG, JPG, or SVG (recommended: 48x48px or scalable).
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Difficulty -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h3 class="h6 mb-0">🎮 Difficulty & Realism</h3>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Difficulty Level</label>
+            <select name="difficulty" class="form-select">
+              <option value="Easy" {% if settings.difficulty == 'Easy' %}selected{% endif %}>Easy - Higher profits, minimal penalties</option>
+              <option value="Normal" {% if settings.difficulty == 'Normal' %}selected{% endif %}>Normal - Balanced gameplay</option>
+              <option value="Hard" {% if settings.difficulty == 'Hard' %}selected{% endif %}>Hard - Lower profits, stricter penalties</option>
+              <option value="Realistic" {% if settings.difficulty == 'Realistic' %}selected{% endif %}>Realistic - Maximum realism & challenges</option>
+            </select>
+            <div class="form-text">Affects profit margins and operational penalties.</div>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Revenue Variance (±%)</label>
+            <input type="number" step="0.01" min="0" max="0.5" name="realism_fuel_variance" class="form-control" value="{{ settings.realism_fuel_variance }}">
+            <div class="form-text">Random profit fluctuation (0.05 = ±5%).</div>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Destination Miss Penalty (%)</label>
+            <input type="number" step="0.01" min="0" max="1" name="realism_destination_penalty" class="form-control" value="{{ settings.realism_destination_penalty }}">
+            <div class="form-text">Penalty if flight doesn't reach planned destination (0.25 = 25%).</div>
+          </div>
+        </div>
+        <div class="alert alert-info py-2 mt-3 small mb-0">
+          <strong>Difficulty Effects:</strong>
+          <ul class="mb-0 mt-1">
+            <li><strong>Easy:</strong> +20% base revenue, 10% destination penalty, ±2% variance</li>
+            <li><strong>Normal:</strong> Standard revenue, 25% penalty, ±5% variance (default)</li>
+            <li><strong>Hard:</strong> -10% base revenue, 35% penalty, ±8% variance</li>
+            <li><strong>Realistic:</strong> -20% base revenue, 50% penalty, ±10% variance, fuel reconciliation strictly enforced</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Display Preferences -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h3 class="h6 mb-0">📊 Display Preferences</h3>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Currency Symbol</label>
+            <input type="text" name="currency_symbol" class="form-control" value="{{ settings.currency_symbol }}" maxlength="5" placeholder="$">
+            <div class="form-text">Shown for all monetary amounts.</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Distance Unit</label>
+            <select name="distance_unit" class="form-select">
+              <option value="NM" {% if settings.distance_unit == 'NM' %}selected{% endif %}>Nautical Miles (NM)</option>
+              <option value="KM" {% if settings.distance_unit == 'KM' %}selected{% endif %}>Kilometers (KM)</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Weight Unit</label>
+            <select name="weight_unit" class="form-select">
+              <option value="lbs" {% if settings.weight_unit == 'lbs' %}selected{% endif %}>Pounds (lbs)</option>
+              <option value="kg" {% if settings.weight_unit == 'kg' %}selected{% endif %}>Kilograms (kg)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Save Button -->
+    <div class="d-flex justify-content-between align-items-center">
+      <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+    </div>
+  </form>
+</div>
+
+<style>
+.card-header {
+  background-color: rgba(13, 110, 253, 0.08);
+  border-bottom: 1px solid var(--bs-border-color);
+}
+</style>
+{% endblock %}

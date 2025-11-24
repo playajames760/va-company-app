@@ -116,6 +116,18 @@ class FleetEntry(db.Model):
     useful_load = db.Column(db.String(20))
     notes = db.Column(db.Text)
 
+
+class AppSettings(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    company_name = db.Column(db.String(100), default='Palm Route Air')
+    logo_filename = db.Column(db.String(120))  # stored in static/logos/
+    difficulty = db.Column(db.String(20), default='Normal')  # Easy, Normal, Hard, Realistic
+    realism_fuel_variance = db.Column(db.Float, default=0.05)  # ±5% revenue jitter
+    realism_destination_penalty = db.Column(db.Float, default=0.25)  # 25% penalty for missed destination
+    currency_symbol = db.Column(db.String(5), default='$')
+    distance_unit = db.Column(db.String(10), default='NM')  # NM or KM
+    weight_unit = db.Column(db.String(10), default='lbs')  # lbs or kg
+
 # Create tables after all model classes have been declared
 with app.app_context():
     db.create_all()
@@ -160,6 +172,18 @@ with app.app_context():
     if CompanyAccount.query.first() is None:
         db.session.add(CompanyAccount(balance=0.0))
         db.session.commit()
+    # Ensure single app settings row exists
+    if AppSettings.query.first() is None:
+        db.session.add(AppSettings(
+            company_name='Palm Route Air',
+            difficulty='Normal',
+            realism_fuel_variance=0.05,
+            realism_destination_penalty=0.25,
+            currency_symbol='$',
+            distance_unit='NM',
+            weight_unit='lbs'
+        ))
+        db.session.commit()
     # Runtime add fuel_used to crew_log if missing
     insp_crew = db.session.execute(db.text("PRAGMA table_info(crew_log)")).fetchall()
     crew_cols = {row[1] for row in insp_crew}
@@ -172,6 +196,18 @@ with app.app_context():
     if not insp_incident:
         # Table will be created by db.create_all for new DBs; for existing DBs without it, nothing else required.
         pass
+
+
+# Make settings available in all templates
+@app.context_processor
+def inject_settings():
+    try:
+        settings = AppSettings.query.first()
+        if not settings:
+            settings = AppSettings(company_name='Palm Route Air')
+    except:
+        settings = None
+    return dict(app_settings=settings)
 
 
 # --- Helper Parsers -------------------------------------------------------
@@ -279,7 +315,21 @@ def compute_dispatch_financials(dispatch: DispatchRelease):
     Fuel cost: planned fuel * cost constant if numeric.
     Returns (revenue, costs, profit).
     """
-    rev_base = ECONOMY_CONSTANTS['BASE_FLIGHT_REVENUE']
+    # Load settings for difficulty adjustments
+    settings = AppSettings.query.first()
+    if not settings:
+        settings = AppSettings()  # fallback to defaults
+    
+    # Apply difficulty multipliers
+    difficulty_multipliers = {
+        'Easy': {'revenue': 1.20, 'penalty': 0.10, 'variance': 0.02},
+        'Normal': {'revenue': 1.0, 'penalty': 0.25, 'variance': 0.05},
+        'Hard': {'revenue': 0.90, 'penalty': 0.35, 'variance': 0.08},
+        'Realistic': {'revenue': 0.80, 'penalty': 0.50, 'variance': 0.10}
+    }
+    diff_params = difficulty_multipliers.get(settings.difficulty, difficulty_multipliers['Normal'])
+    
+    rev_base = ECONOMY_CONSTANTS['BASE_FLIGHT_REVENUE'] * diff_params['revenue']
     # Derive payload from linked cargo manifests if present, else fall back
     payload_val = None
     linked_weights = []
@@ -361,11 +411,11 @@ def compute_dispatch_financials(dispatch: DispatchRelease):
             arrived_at_dest = True
             break
     if not arrived_at_dest and crew_logs:
-        # Heavy penalty if flight never reached planned destination
-        penalty += 0.25 * (payload_revenue + distance_revenue)
-    # Small randomness for immersion (+/- up to 5%)
+        # Apply difficulty-based penalty if flight never reached planned destination
+        penalty += diff_params['penalty'] * (payload_revenue + distance_revenue)
+    # Small randomness for immersion (use difficulty variance setting)
     import random
-    jitter = random.uniform(-0.05, 0.05)
+    jitter = random.uniform(-diff_params['variance'], diff_params['variance'])
     bonus_multiplier += jitter
     # Apply multiplier to core revenue (base + payload + distance) then subtract penalties
     core_revenue = rev_base + payload_revenue + distance_revenue
@@ -962,6 +1012,53 @@ def economy_ledger():
     acct = CompanyAccount.query.first()
     txns = Transaction.query.order_by(Transaction.timestamp.desc()).limit(200).all()
     return render_template('economy_ledger.html', account=acct, transactions=txns, constants=ECONOMY_CONSTANTS)
+
+
+@app.route('/settings', methods=['GET', 'POST'])
+def settings():
+    settings_obj = AppSettings.query.first()
+    if not settings_obj:
+        settings_obj = AppSettings()
+        db.session.add(settings_obj)
+        db.session.commit()
+    
+    if request.method == 'POST':
+        settings_obj.company_name = request.form.get('company_name') or 'Palm Route Air'
+        settings_obj.difficulty = request.form.get('difficulty') or 'Normal'
+        settings_obj.currency_symbol = request.form.get('currency_symbol') or '$'
+        settings_obj.distance_unit = request.form.get('distance_unit') or 'NM'
+        settings_obj.weight_unit = request.form.get('weight_unit') or 'lbs'
+        
+        # Realism settings - parse floats with validation
+        try:
+            settings_obj.realism_fuel_variance = float(request.form.get('realism_fuel_variance', 0.05))
+        except ValueError:
+            settings_obj.realism_fuel_variance = 0.05
+        
+        try:
+            settings_obj.realism_destination_penalty = float(request.form.get('realism_destination_penalty', 0.25))
+        except ValueError:
+            settings_obj.realism_destination_penalty = 0.25
+        
+        # Handle logo upload
+        logo_file = request.files.get('logo_file')
+        if logo_file and logo_file.filename:
+            # Create logos directory if it doesn't exist
+            logos_dir = os.path.join(base_dir, 'static', 'logos')
+            os.makedirs(logos_dir, exist_ok=True)
+            
+            # Save with sanitized filename
+            safe_filename = re.sub(r'[^a-zA-Z0-9._-]', '_', logo_file.filename)
+            logo_path = os.path.join(logos_dir, safe_filename)
+            logo_file.save(logo_path)
+            settings_obj.logo_filename = safe_filename
+        
+        db.session.commit()
+        flash('Settings updated successfully!', 'success')
+        return redirect(url_for('settings'))
+    
+    return render_template('settings.html', settings=settings_obj)
+
 
 @app.route('/dispatch/<int:id>/briefing_pdf')
 def dispatch_briefing_pdf(id):
