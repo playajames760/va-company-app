@@ -108,6 +108,16 @@
       <div class="form-text">Only unlinked manifests are listed. Linking updates actual cargo weight aggregation.</div>
     </div>
     <div class="col-md-6">
+      <label class="form-label">Link Existing Crew Log (optional)</label>
+      <select name="crew_log_id" class="form-select">
+        <option value="">-- None / Link Later --</option>
+        {% for cl in crew_log_options %}
+          <option value="{{ cl.id }}">#{{ cl.id }} {{ cl.date }} {{ cl.flight_id }} {{ cl.origin }}→{{ cl.destination }} ({{ cl.block_time }} hrs)</option>
+        {% endfor %}
+      </select>
+      <div class="form-text">Only crew logs without a dispatch link are listed.</div>
+    </div>
+    <div class="col-md-6">
       <label class="form-label">Create New Cargo Manifest After Save</label>
       <div class="form-check mt-2">
         <input class="form-check-input" type="checkbox" id="createCargoNext" name="create_cargo_next">

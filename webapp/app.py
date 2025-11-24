@@ -8,7 +8,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 
 # Application version
-APP_VERSION = 'v1.0.0'
+APP_VERSION = 'v0.7.0'
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'replace-this-with-env-secret'
@@ -1223,6 +1223,8 @@ def dispatch_edit(id):
             db.session.commit()
         # Optional link existing cargo manifest on edit
         cargo_manifest_id = request.form.get('cargo_manifest_id') or None
+        # Optional link existing crew log on edit
+        crew_log_id = request.form.get('crew_log_id') or None
         create_cargo_next = request.form.get('create_cargo_next') == 'on'
         if cargo_manifest_id:
             manifest = CargoManifest.query.get(cargo_manifest_id)
@@ -1238,6 +1240,11 @@ def dispatch_edit(id):
                         pass
                 total = sum(weights)
                 d.actual_cargo_weight = str(int(total)) if weights and float(total).is_integer() else (f"{total:.1f}" if weights else None)
+                db.session.commit()
+        if crew_log_id:
+            crew_log = CrewLog.query.get(crew_log_id)
+            if crew_log:
+                crew_log.dispatch_release_id = d.id
                 db.session.commit()
         if create_cargo_next:
             return redirect(url_for('cargo', date=d.date, flight_id=d.flight_id,
@@ -1268,13 +1275,59 @@ def dispatch_edit(id):
     cargo_manifest_options = CargoManifest.query.filter_by(dispatch_release_id=None).order_by(CargoManifest.id.desc()).limit(25).all()
     linked_manifests = d.cargo_manifests.order_by(CargoManifest.id.desc()).all()
     crew_logs = CrewLog.query.filter_by(dispatch_release_id=d.id).order_by(CrewLog.id.desc()).all()
+    crew_log_options = CrewLog.query.filter_by(dispatch_release_id=None).order_by(CrewLog.id.desc()).limit(25).all()
     fleet_entry_options = FleetEntry.query.order_by(FleetEntry.status.asc(), FleetEntry.registration.asc()).all()
-    return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id, cargo_manifest_options=cargo_manifest_options, linked_manifests=linked_manifests, crew_logs=crew_logs, fleet_entry_options=fleet_entry_options)
+    return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id, cargo_manifest_options=cargo_manifest_options, linked_manifests=linked_manifests, crew_logs=crew_logs, crew_log_options=crew_log_options, fleet_entry_options=fleet_entry_options)
 
 @app.route('/dispatch/<int:id>/toggle_complete', methods=['POST'])
 @roles_required('Manager', 'Administrator')
 def dispatch_toggle_complete(id):
     d = DispatchRelease.query.get_or_404(id)
+
+    def _validate_dispatch_completion(dispatch: DispatchRelease):
+        """Return list of validation error strings preventing dispatch completion."""
+        errors = []
+        # Must have at least one linked cargo manifest
+        if dispatch.cargo_manifests.count() == 0:
+            errors.append('At least one linked cargo manifest is required.')
+        # Must have at least one crew log
+        crew_logs_all = CrewLog.query.filter_by(dispatch_release_id=dispatch.id).all()
+        if len(crew_logs_all) == 0:
+            errors.append('At least one linked crew log is required.')
+        # For each cargo manifest, ensure cargo is transported from departure to arrival via chain of crew logs
+        for manifest in dispatch.cargo_manifests.all():
+            related_logs = [cl for cl in crew_logs_all if cl.cargo_manifest_id == manifest.id]
+            if not related_logs:
+                errors.append(f'Cargo manifest #{manifest.id} has no crew logs.')
+                continue
+            # Build adjacency from origin -> set(destinations)
+            adjacency = {}
+            for cl in related_logs:
+                adjacency.setdefault(cl.origin, set()).add(cl.destination)
+            # BFS from manifest.departure
+            target = manifest.arrival
+            visited = set()
+            frontier = [manifest.departure]
+            while frontier:
+                current = frontier.pop()
+                if current == target:
+                    break
+                if current in visited:
+                    continue
+                visited.add(current)
+                for nxt in adjacency.get(current, set()):
+                    if nxt not in visited:
+                        frontier.append(nxt)
+            else:  # did not break -> target not reached
+                errors.append(f'Cargo manifest #{manifest.id} not satisfied: no crew log path {manifest.departure}→{manifest.arrival}.')
+        return errors
+
+    # Only validate when attempting to mark completed (i.e., currently in-progress)
+    if d.completed == 0:
+        problems = _validate_dispatch_completion(d)
+        if problems:
+            flash('Cannot mark dispatch completed: ' + '; '.join(problems), 'error')
+            return redirect(url_for('dispatch_detail', id=d.id))
     d.completed = 0 if d.completed == 1 else 1
     db.session.commit()
     flash(f'Dispatch #{d.id} marked {"completed" if d.completed==1 else "in-progress"}.', 'success')
@@ -1481,7 +1534,10 @@ def crew():
         'dispatch_release_id': request.args.get('dispatch_release_id', ''),
         'cargo_manifest_id': request.args.get('cargo_manifest_id', '')
     }
-    return render_template('crew_form.html', defaults=defaults)
+    # Options for linking (show recent unlinked dispatches/manifests plus any referenced by query params)
+    dispatch_options = DispatchRelease.query.order_by(DispatchRelease.id.desc()).limit(50).all()
+    cargo_manifest_options = CargoManifest.query.order_by(CargoManifest.id.desc()).limit(50).all()
+    return render_template('crew_form.html', defaults=defaults, dispatch_options=dispatch_options, cargo_manifest_options=cargo_manifest_options)
 
 
 @app.route('/crew/history')
@@ -1754,6 +1810,9 @@ def crew_edit(id):
         fields = ['date','flight_id','origin','destination','aircraft','block_off','block_on','block_time','cargo_weight','fuel_used','remarks']
         for f in fields:
             setattr(c, f, request.form.get(f))
+        # Allow updating linkage
+        c.dispatch_release_id = request.form.get('dispatch_release_id') or None
+        c.cargo_manifest_id = request.form.get('cargo_manifest_id') or None
         db.session.commit()
         # Adjust fuel reconciliation transaction if fuel changed and dispatch linked
         if c.dispatch_release_id and c.fuel_used:
@@ -1793,7 +1852,9 @@ def crew_edit(id):
                         db.session.commit()
         return redirect(url_for('crew_detail', id=c.id))
     defaults = {f: getattr(c,f) for f in ['date','flight_id','origin','destination','aircraft','block_off','block_on','block_time','cargo_weight','fuel_used','remarks']}
-    return render_template('crew_edit.html', c=c, defaults=defaults)
+    dispatch_options = DispatchRelease.query.order_by(DispatchRelease.id.desc()).limit(50).all()
+    cargo_manifest_options = CargoManifest.query.order_by(CargoManifest.id.desc()).limit(50).all()
+    return render_template('crew_edit.html', c=c, defaults=defaults, dispatch_options=dispatch_options, cargo_manifest_options=cargo_manifest_options)
 
 @app.route('/notams/<int:id>')
 @login_required

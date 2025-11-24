@@ -56,18 +56,24 @@
       <label class="form-label">Remarks / Route Segment</label>
       <textarea name="remarks" rows="3" class="form-control" placeholder="Notes on weather, ATC, performance, etc.">{{ defaults.remarks }}</textarea>
     </div>
-    {% if defaults.dispatch_release_id or defaults.cargo_manifest_id %}
-    <div class="col-12">
-      <div class="alert alert-info py-2 mb-0 small">
-        Linked:
-        {% if defaults.dispatch_release_id %} Dispatch Release #{{ defaults.dispatch_release_id }}{% endif %}
-        {% if defaults.dispatch_release_id and defaults.cargo_manifest_id %} | {% endif %}
-        {% if defaults.cargo_manifest_id %} Cargo Manifest #{{ defaults.cargo_manifest_id }}{% endif %}
-      </div>
+    <div class="col-md-6">
+      <label class="form-label">Link Dispatch Release (optional)</label>
+      <select name="dispatch_release_id" class="form-select">
+        <option value="">-- None --</option>
+        {% for dr in dispatch_options %}
+          <option value="{{ dr.id }}" {% if dr.id|string == defaults.dispatch_release_id|string %}selected{% endif %}>#{{ dr.id }} {{ dr.date }} {{ dr.flight_id }} {{ dr.departure }}→{{ dr.destination }} {% if dr.completed==1 %}(Completed){% endif %}</option>
+        {% endfor %}
+      </select>
     </div>
-    {% endif %}
-    <input type="hidden" name="dispatch_release_id" value="{{ defaults.dispatch_release_id }}">
-    <input type="hidden" name="cargo_manifest_id" value="{{ defaults.cargo_manifest_id }}">
+    <div class="col-md-6">
+      <label class="form-label">Link Cargo Manifest (optional)</label>
+      <select name="cargo_manifest_id" class="form-select">
+        <option value="">-- None --</option>
+        {% for cm in cargo_manifest_options %}
+          <option value="{{ cm.id }}" {% if cm.id|string == defaults.cargo_manifest_id|string %}selected{% endif %}>#{{ cm.id }} {{ cm.date }} {{ cm.flight_id }} {{ cm.departure }}→{{ cm.arrival }} ({{ cm.total_weight }} lbs)</option>
+        {% endfor %}
+      </select>
+    </div>
     </div>
     <div class="col-12 d-flex justify-content-between align-items-center mt-3">
       <a href="{{ url_for('crew_history') }}" class="btn btn-outline-secondary">View History</a>

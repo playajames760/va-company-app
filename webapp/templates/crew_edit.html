@@ -47,6 +47,24 @@
       <label class="form-label">Remarks</label>
       <textarea name="remarks" rows="3" class="form-control">{{ defaults.remarks }}</textarea>
     </div>
+    <div class="col-md-6">
+      <label class="form-label">Dispatch Release Link</label>
+      <select name="dispatch_release_id" class="form-select">
+        <option value="">-- None --</option>
+        {% for dr in dispatch_options %}
+          <option value="{{ dr.id }}" {% if dr.id == c.dispatch_release_id %}selected{% endif %}>#{{ dr.id }} {{ dr.date }} {{ dr.flight_id }} {{ dr.departure }}→{{ dr.destination }} {% if dr.completed==1 %}(Completed){% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Cargo Manifest Link</label>
+      <select name="cargo_manifest_id" class="form-select">
+        <option value="">-- None --</option>
+        {% for cm in cargo_manifest_options %}
+          <option value="{{ cm.id }}" {% if cm.id == c.cargo_manifest_id %}selected{% endif %}>#{{ cm.id }} {{ cm.date }} {{ cm.flight_id }} {{ cm.departure }}→{{ cm.arrival }} ({{ cm.total_weight }} lbs)</option>
+        {% endfor %}
+      </select>
+    </div>
     <div class="col-12 d-flex justify-content-between mt-3">
       <a href="{{ url_for('crew_detail', id=c.id) }}" class="btn btn-outline-secondary">Cancel</a>
       <button type="submit" class="btn btn-primary">Save Changes</button>
