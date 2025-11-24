@@ -1817,6 +1817,16 @@ def crew_detail(id):
     cargo_manifest_options = CargoManifest.query.order_by(CargoManifest.id.desc()).limit(50).all()
     return render_template('crew_detail.html', c=c, dispatch_ref=dispatch_ref, cargo_ref=cargo_ref, signoffs=signoffs, dispatch_options=dispatch_options, cargo_manifest_options=cargo_manifest_options)
 
+@app.route('/crew/<int:id>/unlink', methods=['POST'])
+@roles_required('Manager', 'Administrator')
+def crew_unlink(id):
+    c = CrewLog.query.get_or_404(id)
+    c.dispatch_release_id = None
+    c.cargo_manifest_id = None
+    db.session.commit()
+    flash('Dispatch and cargo links removed from crew log.', 'warning')
+    return redirect(url_for('crew_detail', id=id))
+
 @app.route('/crew/<int:id>/edit', methods=['GET','POST'])
 @roles_required('Manager', 'Administrator')
 def crew_edit(id):

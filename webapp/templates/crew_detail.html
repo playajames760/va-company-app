@@ -52,6 +52,11 @@
     </div>
   </div>
   <div class="mt-4 d-flex justify-content-end">
+    {% if (c.dispatch_release_id or c.cargo_manifest_id) and current_employee and current_employee.role in ['Manager','Administrator'] %}
+      <form action="{{ url_for('crew_unlink', id=c.id) }}" method="post" class="d-inline me-2" onsubmit="return confirm('Unlink this crew log from its dispatch and cargo manifest?');">
+        <button class="btn btn-outline-warning btn-sm">Unlink</button>
+      </form>
+    {% endif %}
     <form action="{{ url_for('delete_crew', id=c.id) }}" method="post" class="d-inline" onsubmit="return confirm('Delete this crew log entry?');">
       <button class="btn btn-outline-danger btn-sm">Delete Log</button>
     </form>
