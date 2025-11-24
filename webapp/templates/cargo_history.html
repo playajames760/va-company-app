@@ -12,8 +12,6 @@
         <tr>
           <th>#</th>
           <th>Date</th>
-          <th>Flight</th>
-          <th>Aircraft</th>
           <th>From</th>
           <th>To</th>
           <th>Weight</th>
@@ -27,8 +25,6 @@
         <tr>
           <td>{{ m.id }}</td>
           <td>{{ m.date }}</td>
-          <td>{{ m.flight_id }}</td>
-          <td>{{ m.aircraft }}</td>
           <td>{{ m.departure }}</td>
           <td>{{ m.arrival }}</td>
           <td>{{ m.total_weight }}</td>
@@ -37,7 +33,7 @@
           <td class="text-nowrap">
             <a class="btn btn-outline-primary btn-sm" href="{{ url_for('cargo_detail', id=m.id) }}">View</a>
             <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('cargo_detail', id=m.id, edit=1) }}#editForm">Edit</a>
-            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('dispatch', date=m.date, flight_id=m.flight_id, aircraft=m.aircraft, departure=m.departure, destination=m.arrival) }}">Dispatch</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('dispatch', date=m.date, departure=m.departure, destination=m.arrival) }}">Dispatch</a>
             <form action="{{ url_for('delete_cargo', id=m.id) }}" method="post" class="d-inline">
               <button class="btn btn-danger btn-sm" onclick="return confirm('Delete this cargo manifest?')">Delete</button>
             </form>

@@ -5,6 +5,16 @@
     <h2 class="mb-0">Dispatch Release #{{ d.id }} – {{ d.flight_id }}</h2>
     <a href="{{ url_for('dispatch_history') }}" class="btn btn-outline-secondary btn-sm">Back to History</a>
   </div>
+  <div class="mb-2">
+    {% if d.completed == 1 %}
+      <span class="badge bg-success">Completed</span>
+    {% else %}
+      <span class="badge bg-warning text-dark">In-Progress</span>
+    {% endif %}
+    <form method="post" action="{{ url_for('dispatch_toggle_complete', id=d.id) }}" class="d-inline">
+      <button class="btn btn-sm btn-outline-primary ms-2">Toggle Complete</button>
+    </form>
+  </div>
   <p class="text-muted small mb-3">Comprehensive flight/job description including planning, cargo expectations, weather, and special instructions.</p>
   <div class="row g-3">
     <div class="col-md-3">
@@ -43,6 +53,7 @@
     <div class="col-md-3">
       <div class="fw-semibold">Financial Summary</div>
       <div class="small">Rev: {{ '%.2f'|format(fin_summary.revenue) }} | Cost: {{ '%.2f'|format(fin_summary.costs) }} | Profit: {{ '%.2f'|format(fin_summary.profit) }}</div>
+      <div class="small text-muted">Distance: {{ fin_summary.distance_nm }} NM</div>
     </div>
     <div class="col-md-6">
       <div class="fw-semibold">Alternate Airports</div>

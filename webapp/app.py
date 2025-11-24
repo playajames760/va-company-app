@@ -18,8 +18,6 @@ db = SQLAlchemy(app)
 class CargoManifest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.String(20))
-    flight_id = db.Column(db.String(20))
-    aircraft = db.Column(db.String(50))
     departure = db.Column(db.String(10))
     arrival = db.Column(db.String(10))
     total_weight = db.Column(db.String(20))
@@ -265,19 +263,32 @@ def compute_dispatch_financials(dispatch: DispatchRelease):
     Returns (revenue, costs, profit).
     """
     rev_base = ECONOMY_CONSTANTS['BASE_FLIGHT_REVENUE']
+    # Derive payload from linked cargo manifests if present, else fall back
     payload_val = None
-    for candidate in [dispatch.actual_cargo_weight, dispatch.payload_planned]:
-        if candidate:
-            try:
-                payload_val = float(candidate)
-                break
-            except ValueError:
-                continue
+    linked_weights = []
+    if hasattr(dispatch, 'cargo_manifests') and dispatch.cargo_manifests is not None:
+        for m in dispatch.cargo_manifests.all():
+            if m.total_weight:
+                try:
+                    linked_weights.append(float(m.total_weight))
+                except ValueError:
+                    continue
+    if linked_weights:
+        payload_val = sum(linked_weights)
+    else:
+        for candidate in [dispatch.actual_cargo_weight, dispatch.payload_planned]:
+            if candidate:
+                try:
+                    payload_val = float(candidate)
+                    break
+                except ValueError:
+                    continue
     payload_revenue = (payload_val or 0.0) * ECONOMY_CONSTANTS['REVENUE_PER_LB']
     # Attempt to use actual fuel from related crew logs (latest with numeric fuel_used)
     fuel_val = 0.0
     actual_fuel = None
     crew_logs = CrewLog.query.filter_by(dispatch_release_id=dispatch.id).order_by(CrewLog.id.desc()).all()
+    # Prefer most recent numeric fuel_used
     for cl in crew_logs:
         if cl.fuel_used:
             try:
@@ -322,7 +333,26 @@ def compute_dispatch_financials(dispatch: DispatchRelease):
         except Exception:
             distance_nm = 0.0
     distance_revenue = distance_nm * ECONOMY_CONSTANTS['REVENUE_PER_NM']
-    revenue = rev_base + payload_revenue + distance_revenue
+
+    # Immersion/realism adjustments based on execution vs plan
+    bonus_multiplier = 1.0
+    penalty = 0.0
+    # Check if any crew log actually arrived at planned destination
+    arrived_at_dest = False
+    for cl in crew_logs:
+        if cl.destination and dispatch.destination and cl.destination.strip().upper() == dispatch.destination.strip().upper():
+            arrived_at_dest = True
+            break
+    if not arrived_at_dest and crew_logs:
+        # Heavy penalty if flight never reached planned destination
+        penalty += 0.25 * (payload_revenue + distance_revenue)
+    # Small randomness for immersion (+/- up to 5%)
+    import random
+    jitter = random.uniform(-0.05, 0.05)
+    bonus_multiplier += jitter
+    # Apply multiplier to core revenue (base + payload + distance) then subtract penalties
+    core_revenue = rev_base + payload_revenue + distance_revenue
+    revenue = core_revenue * bonus_multiplier - penalty
     costs = fuel_cost + maintenance
     profit = revenue - costs
     return round(revenue,2), round(costs,2), round(profit,2), round(distance_nm,1)
@@ -362,8 +392,6 @@ def cargo():
     if request.method == 'POST':
         manifest = CargoManifest(
             date=request.form.get('date'),
-            flight_id=request.form.get('flight_id'),
-            aircraft=request.form.get('aircraft'),
             departure=request.form.get('departure'),
             arrival=request.form.get('arrival'),
             total_weight=request.form.get('total_weight'),
@@ -413,8 +441,6 @@ def cargo():
         return redirect(url_for('cargo_history'))
     defaults = {
         'date': request.args.get('date', ''),
-        'flight_id': request.args.get('flight_id', ''),
-        'aircraft': request.args.get('aircraft', ''),
         'departure': request.args.get('departure', ''),
         'arrival': request.args.get('arrival', ''),
         'total_weight': request.args.get('total_weight', ''),
@@ -797,7 +823,10 @@ def dispatch_edit(id):
         'alt_airports': d.alt_airports,
         'weather_brief': d.weather_brief,
         'special_notes': d.special_notes,
-        'actual_cargo_weight': d.actual_cargo_weight
+        'actual_cargo_weight': d.actual_cargo_weight,
+        'flight_plan_raw': d.flight_plan_raw,
+        'flight_plan_source': d.flight_plan_source,
+        'briefing_pdf_filename': d.briefing_pdf_filename
     }
     cargo_manifest_options = CargoManifest.query.filter_by(dispatch_release_id=None).order_by(CargoManifest.id.desc()).limit(25).all()
     linked_manifests = d.cargo_manifests.order_by(CargoManifest.id.desc()).all()
@@ -1084,8 +1113,6 @@ def cargo_detail(id):
     if request.method == 'POST':
         old_dispatch_id = m.dispatch_release_id
         m.date = request.form.get('date')
-        m.flight_id = request.form.get('flight_id')
-        m.aircraft = request.form.get('aircraft')
         m.departure = request.form.get('departure')
         m.arrival = request.form.get('arrival')
         m.total_weight = request.form.get('total_weight')

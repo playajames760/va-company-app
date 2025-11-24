@@ -4,16 +4,6 @@
   <h2 class="mb-3">Dispatch Release {% if edit_id %}Edit{% endif %}</h2>
   <p class="text-muted small">Issue the operational release for an upcoming flight. Enter planned times in Zulu (UTC), confirm departure and destination ICAO codes, and provide a concise route/remarks (include altitude, routing fixes, or VFR notes). Complete this prior to off-blocks; update with amendments by creating a new release if major changes occur.</p>
   {% include '_flow_help.html' %}
-  <div class="alert alert-secondary small" id="nextStepBox">
-    <strong>Next Steps:</strong>
-    <span id="nextCargoLinkWrapper">
-      <a id="nextCargoLink" href="#">Create Cargo Manifest</a>
-    </span>
-    |
-    <span id="nextCrewLinkWrapper">
-      <a id="nextCrewLink" href="#">Log Crew Entry (after flight)</a>
-    </span>
-  </div>
   <form method="post" enctype="multipart/form-data" class="row g-3" action="{% if edit_id %}{{ url_for('dispatch_edit', id=edit_id) }}{% else %}{{ url_for('dispatch') }}{% endif %}">
     <div class="col-md-3">
       <label class="form-label">Date</label>
@@ -57,12 +47,18 @@
     <div class="col-md-6">
       <label class="form-label">Upload Flight Plan (SimBrief .xml / .fpl / MSFS .pln)</label>
       <input type="file" name="fpl_file" class="form-control" accept=".xml,.fpl,.pln,.txt">
-      <div class="form-text">If route empty we auto-extract & populate. Raw plan stored.</div>
+      <div class="form-text">
+        If route empty we auto-extract & populate. Raw plan stored.
+        {% if edit_id and defaults.flight_plan_raw %}<br>Current: {{ defaults.flight_plan_source or 'uploaded file' }}{% endif %}
+      </div>
     </div>
     <div class="col-md-6">
       <label class="form-label">Briefing PDF (optional)</label>
       <input type="file" name="briefing_pdf" class="form-control" accept="application/pdf,.pdf">
-      <div class="form-text">Full briefing document (stored and viewable on detail page).</div>
+      <div class="form-text">
+        Full briefing document (stored and viewable on detail page).
+        {% if edit_id and defaults.briefing_pdf_filename %}<br>Current: {{ defaults.briefing_pdf_filename }}{% endif %}
+      </div>
     </div>
     <hr class="mt-4" />
     <div class="col-md-3">
@@ -175,32 +171,6 @@
 </div>
 <script>
  (function(){
-   function buildLinks(){
-     const date = document.querySelector('input[name=date]').value;
-     const flight = document.querySelector('input[name=flight_id]').value;
-    const aircraft = document.getElementById('aircraftHidden').value;
-     const dep = document.querySelector('input[name=departure]').value;
-     const dest = document.querySelector('input[name=destination]').value;
-     let cargoUrl = "{{ url_for('cargo') }}";
-     cargoUrl += '?date=' + encodeURIComponent(date);
-     cargoUrl += '&flight_id=' + encodeURIComponent(flight);
-     cargoUrl += '&aircraft=' + encodeURIComponent(aircraft);
-     cargoUrl += '&departure=' + encodeURIComponent(dep);
-     cargoUrl += '&arrival=' + encodeURIComponent(dest);
-    var dispatchId = "{{ edit_id|default('', true) }}"; // empty string if not editing
-    if(dispatchId){ cargoUrl += '&dispatch_release_id=' + dispatchId; }
-     let crewUrl = "{{ url_for('crew') }}";
-     crewUrl += '?date=' + encodeURIComponent(date);
-     crewUrl += '&flight_id=' + encodeURIComponent(flight);
-     crewUrl += '&origin=' + encodeURIComponent(dep);
-     crewUrl += '&destination=' + encodeURIComponent(dest);
-     crewUrl += '&aircraft=' + encodeURIComponent(aircraft);
-    if(dispatchId){ crewUrl += '&dispatch_release_id=' + dispatchId; }
-     const cargoLink = document.getElementById('nextCargoLink');
-     const crewLink = document.getElementById('nextCrewLink');
-     if(cargoLink) cargoLink.href = cargoUrl;
-     if(crewLink) crewLink.href = crewUrl;
-   }
    function syncAircraft(){
      const sel = document.getElementById('fleetSelect');
      if (!sel) return;
@@ -210,17 +180,11 @@
      } else if (!sel.value) {
        document.getElementById('aircraftHidden').value = '';
      }
-     buildLinks();
    }
-   document.querySelectorAll('#nextStepBox input, #nextStepBox ~ form input').forEach(el=>{
-     el.addEventListener('input', buildLinks);
-   });
    const fleetSel = document.getElementById('fleetSelect');
    if (fleetSel){
      fleetSel.addEventListener('change', syncAircraft);
      syncAircraft();
-   } else {
-     buildLinks();
    }
  })();
 </script>
