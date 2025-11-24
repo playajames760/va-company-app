@@ -4,11 +4,9 @@
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h2 class="mb-0">Crew Log #{{ c.id }} – {{ c.flight_id }}</h2>
     <div class="btn-group btn-group-sm">
-      <a href="{{ url_for('crew_history') }}" class="btn btn-outline-secondary">History</a>
-      <a href="{{ url_for('crew_edit', id=c.id) }}" class="btn btn-outline-warning">Edit</a>
-      <form action="{{ url_for('delete_crew', id=c.id) }}" method="post" class="d-inline" onsubmit="return confirm('Delete this crew log entry?');">
-        <button class="btn btn-outline-danger btn-sm">Delete</button>
-      </form>
+      {% if current_employee and current_employee.role in ['Manager','Administrator'] %}
+        <a href="#editForm" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('editForm').classList.toggle('d-none');return false;">{{ 'Hide Edit' if request.args.get('edit') else 'Edit' }}</a>
+      {% endif %}
     </div>
   </div>
   {% if c.dispatch_release_id %}
@@ -53,5 +51,83 @@
       {% endif %}
     </div>
   </div>
+  <div class="mt-4 d-flex justify-content-end">
+    <form action="{{ url_for('delete_crew', id=c.id) }}" method="post" class="d-inline" onsubmit="return confirm('Delete this crew log entry?');">
+      <button class="btn btn-outline-danger btn-sm">Delete Log</button>
+    </form>
+  </div>
+  {% if current_employee and current_employee.role in ['Manager','Administrator'] %}
+  <div id="editForm" class="d-none mt-4">
+    <h3 class="h6 mb-3">Edit Crew Log</h3>
+    <form method="post" action="{{ url_for('crew_edit', id=c.id) }}" class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">Date</label>
+        <input type="date" name="date" class="form-control" value="{{ c.date }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Flight ID</label>
+        <input type="text" name="flight_id" class="form-control" value="{{ c.flight_id }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Origin</label>
+        <input type="text" name="origin" class="form-control" value="{{ c.origin }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Destination</label>
+        <input type="text" name="destination" class="form-control" value="{{ c.destination }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Aircraft</label>
+        <input type="text" name="aircraft" class="form-control" value="{{ c.aircraft }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Block Off (Z)</label>
+        <input type="text" name="block_off" class="form-control" value="{{ c.block_off }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Block On (Z)</label>
+        <input type="text" name="block_on" class="form-control" value="{{ c.block_on }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Block Time</label>
+        <input type="text" name="block_time" class="form-control" value="{{ c.block_time }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Cargo (lbs)</label>
+        <input type="text" name="cargo_weight" class="form-control" value="{{ c.cargo_weight }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Fuel Used</label>
+        <input type="text" name="fuel_used" class="form-control" value="{{ c.fuel_used }}">
+      </div>
+      <div class="col-12">
+        <label class="form-label">Remarks</label>
+        <textarea name="remarks" rows="3" class="form-control">{{ c.remarks }}</textarea>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Dispatch Release Link</label>
+        <select name="dispatch_release_id" class="form-select">
+          <option value="">-- None --</option>
+          {% for dr in dispatch_options %}
+            <option value="{{ dr.id }}" {% if dr.id == c.dispatch_release_id %}selected{% endif %}>#{{ dr.id }} {{ dr.date }} {{ dr.flight_id }} {{ dr.departure }}→{{ dr.destination }} {% if dr.completed==1 %}(Completed){% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Cargo Manifest Link</label>
+        <select name="cargo_manifest_id" class="form-select">
+          <option value="">-- None --</option>
+          {% for cm in cargo_manifest_options %}
+            <option value="{{ cm.id }}" {% if cm.id == c.cargo_manifest_id %}selected{% endif %}>#{{ cm.id }} {{ cm.date }} {{ cm.flight_id }} {{ cm.departure }}→{{ cm.arrival }} ({{ cm.total_weight }} lbs)</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+        <a href="{{ url_for('crew_history') }}" class="btn btn-outline-secondary">Back to History</a>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

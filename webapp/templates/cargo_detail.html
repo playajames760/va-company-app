@@ -51,30 +51,6 @@
       <button class="btn btn-outline-danger btn-sm">Delete</button>
     </form>
   </div>
-  <div class="mt-4">
-    <h3 class="h6">Sign-Offs</h3>
-    {% if signoffs and signoffs|length > 0 %}
-      <ul class="small mb-2">
-        {% for so in signoffs %}
-          <li>{{ so.timestamp.strftime('%Y-%m-%d %H:%MZ') }} – {{ so.employee.name }}</li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <div class="small text-muted mb-2">No sign-offs yet.</div>
-    {% endif %}
-    {% if current_employee %}
-      {% set already = signoffs|selectattr('employee_id','equalto', current_employee.id)|list %}
-      {% if already|length == 0 %}
-        <form method="post" action="{{ url_for('cargo_sign', id=m.id) }}">
-          <button class="btn btn-outline-success btn-sm">Sign Off Manifest</button>
-        </form>
-      {% else %}
-        <div class="text-success small">You have signed off this manifest.</div>
-      {% endif %}
-    {% else %}
-      <div class="small text-muted">Login to sign off.</div>
-    {% endif %}
-  </div>
   <hr class="my-4">
   <div id="editForm" class="{{ '' if editing else 'd-none' }}">
     <h3 class="h6 mb-3">Edit Manifest</h3>

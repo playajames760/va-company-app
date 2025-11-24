@@ -1799,7 +1799,10 @@ def crew_detail(id):
     dispatch_ref = DispatchRelease.query.get(c.dispatch_release_id) if c.dispatch_release_id else None
     cargo_ref = CargoManifest.query.get(c.cargo_manifest_id) if c.cargo_manifest_id else None
     signoffs = c.signoffs.order_by(CrewLogSignOff.timestamp.asc()).all()
-    return render_template('crew_detail.html', c=c, dispatch_ref=dispatch_ref, cargo_ref=cargo_ref, signoffs=signoffs)
+    # Provide options for inline edit select lists (mirrors crew_edit usage)
+    dispatch_options = DispatchRelease.query.order_by(DispatchRelease.id.desc()).limit(50).all()
+    cargo_manifest_options = CargoManifest.query.order_by(CargoManifest.id.desc()).limit(50).all()
+    return render_template('crew_detail.html', c=c, dispatch_ref=dispatch_ref, cargo_ref=cargo_ref, signoffs=signoffs, dispatch_options=dispatch_options, cargo_manifest_options=cargo_manifest_options)
 
 @app.route('/crew/<int:id>/edit', methods=['GET','POST'])
 @roles_required('Manager', 'Administrator')
