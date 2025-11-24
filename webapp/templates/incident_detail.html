@@ -3,10 +3,13 @@
 <div class="p-4 bg-white rounded shadow-sm">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0">⚠️ Incident #{{ incident.id }} – {{ incident.title }}</h2>
-    <a href="{{ url_for('incident_history') }}" class="btn btn-outline-secondary">Back to Incidents</a>
+    <div class="btn-group btn-group-sm">
+      {% if current_employee and current_employee.role in ['Manager','Administrator'] %}
+        <a href="#editForm" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('editForm').classList.toggle('d-none');return false;">Edit</a>
+      {% endif %}
+    </div>
   </div>
   <p class="text-muted small mb-3">Review details and mark the incident as resolved once follow-up actions are complete.</p>
-  <hr>
 
   <div class="row g-4">
     <div class="col-md-8">
@@ -28,8 +31,7 @@
           {% endif %}
         </dd>
       </dl>
-        <hr>
-        <h3 class="h6">Narrative</h3>
+        <h3 class="h6 mt-3">Narrative</h3>
         <p class="mb-0" style="white-space: pre-line;">{{ incident.description }}</p>
       </div>
     </div>
@@ -46,5 +48,39 @@
       </div>
     </div>
   </div>
+  <div class="mt-4 d-flex justify-content-end">
+    <!-- No explicit delete route yet; placeholder for future delete if added. -->
+    <button class="btn btn-outline-danger btn-sm" type="button" disabled>Delete (not implemented)</button>
+  </div>
+  {% if current_employee and current_employee.role in ['Manager','Administrator'] %}
+  <div id="editForm" class="d-none mt-4">
+    <h3 class="h6 mb-3">Edit Incident Details</h3>
+    <form method="post" action="{{ url_for('incident_detail', id=incident.id) }}" class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Date</label>
+        <input type="date" name="date" class="form-control" value="{{ incident.date }}">
+      </div>
+      <div class="col-md-8">
+        <label class="form-label">Title</label>
+        <input type="text" name="title" class="form-control" value="{{ incident.title }}">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Severity</label>
+        <input type="text" name="severity" class="form-control" value="{{ incident.severity }}">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Estimated Cost</label>
+        <input type="text" name="estimated_cost" class="form-control" value="{{ '%.2f'|format(incident.estimated_cost or 0.0) }}">
+      </div>
+      <div class="col-12">
+        <label class="form-label">Narrative</label>
+        <textarea name="description" rows="3" class="form-control">{{ incident.description }}</textarea>
+      </div>
+      <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+        <button type="submit" name="edit" value="1" class="btn btn-primary btn-sm">Save Changes</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

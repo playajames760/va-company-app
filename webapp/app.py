@@ -871,7 +871,20 @@ def incident():
 def incident_detail(id):
     inc = Incident.query.get_or_404(id)
     if request.method == 'POST':
-        # Allow updating resolution status only for now
+        # Allow updating resolution status and, when requested, main fields
+        if request.form.get('edit') == '1':
+            inc.date = request.form.get('date') or inc.date
+            inc.title = request.form.get('title') or inc.title
+            inc.severity = request.form.get('severity') or inc.severity
+            desc = request.form.get('description')
+            if desc is not None:
+                inc.description = desc
+            est_raw = request.form.get('estimated_cost') or None
+            if est_raw is not None:
+                try:
+                    inc.estimated_cost = float(est_raw)
+                except ValueError:
+                    pass
         resolved_flag = 1 if request.form.get('resolved') == 'on' else 0
         inc.resolved = resolved_flag
         db.session.commit()

@@ -13,7 +13,7 @@
     <div class="alert alert-info small mb-3">Linked to Dispatch Release <a href="{{ url_for('dispatch_detail', id=c.dispatch_release_id) }}" class="alert-link">#{{ c.dispatch_release_id }}</a>.</div>
   {% endif %}
   {% if c.cargo_manifest_id %}
-    <div class="alert alert-secondary small mb-3">Related Cargo Manifest <a href="{{ url_for('cargo_detail', id=c.cargo_manifest_id) }}" class="alert-link">#{{ c.cargo_manifest_id }}</a>.</div>
+    <div class="alert alert-secondary small mb-3">Linked to Cargo Manifest <a href="{{ url_for('cargo_detail', id=c.cargo_manifest_id) }}" class="alert-link">#{{ c.cargo_manifest_id }}</a>.</div>
   {% endif %}
   <dl class="row mb-0">
     <dt class="col-sm-3">Date</dt><dd class="col-sm-9">{{ c.date }}</dd>
