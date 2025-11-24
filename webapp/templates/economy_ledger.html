@@ -30,16 +30,35 @@
   <div class="table-responsive">
     <table class="table table-sm table-striped align-middle">
       <thead class="pra-thead">
-        <tr><th>Time (UTC)</th><th>Type</th><th>Amount</th><th>Description</th><th>Dispatch</th></tr>
+        <tr><th>Time (UTC)</th><th>Type</th><th>Amount</th><th>Description</th><th>Linked Item</th></tr>
       </thead>
       <tbody>
         {% for t in transactions %}
-        <tr>
+        <tr class="clickable-row"
+            {% if t.dispatch_release_id %}
+              onclick="window.location='{{ url_for('dispatch_detail', id=t.dispatch_release_id) }}'"
+            {% elif t.cargo_manifest_id %}
+              onclick="window.location='{{ url_for('cargo_detail', id=t.cargo_manifest_id) }}'"
+            {% elif t.crew_log_id %}
+              onclick="window.location='{{ url_for('crew_detail', id=t.crew_log_id) }}'"
+            {% else %}
+              onclick="return false;"
+            {% endif %}>
           <td class="small">{{ t.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
           <td>{{ t.type }}</td>
           <td>{% if t.type == 'expense' %}-{% endif %}{{ '%.2f'|format(t.amount) }}</td>
           <td class="small">{{ t.description }}</td>
-          <td>{% if t.dispatch_release_id %}<a href="{{ url_for('dispatch_detail', id=t.dispatch_release_id) }}">#{{ t.dispatch_release_id }}</a>{% else %}—{% endif %}</td>
+          <td class="small">
+            {% if t.dispatch_release_id %}
+              Dispatch #{{ t.dispatch_release_id }}
+            {% elif t.cargo_manifest_id %}
+              Cargo #{{ t.cargo_manifest_id }}
+            {% elif t.crew_log_id %}
+              Crew Log #{{ t.crew_log_id }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>

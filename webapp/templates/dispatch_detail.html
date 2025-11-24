@@ -173,6 +173,9 @@
             <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ cl.remarks }}</td>
             <td class="text-nowrap">
               <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('crew_detail', id=cl.id) }}">View/Edit</a>
+              <form method="post" action="{{ url_for('dispatch_unlink_crew', dispatch_id=d.id, crew_id=cl.id) }}" class="d-inline" onsubmit="return confirm('Unlink this crew log?');">
+                <button class="btn btn-danger btn-sm">Unlink</button>
+              </form>
             </td>
           </tr>
         {% endfor %}

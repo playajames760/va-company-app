@@ -1476,6 +1476,18 @@ def dispatch_unlink_manifest(dispatch_id, manifest_id):
     return redirect(url_for('dispatch_edit', id=dispatch_id))
 
 
+@app.route('/dispatch/<int:dispatch_id>/unlink_crew/<int:crew_id>', methods=['POST'])
+@roles_required('Manager', 'Administrator')
+def dispatch_unlink_crew(dispatch_id, crew_id):
+    d = DispatchRelease.query.get_or_404(dispatch_id)
+    cl = CrewLog.query.get_or_404(crew_id)
+    if cl.dispatch_release_id == d.id:
+        cl.dispatch_release_id = None
+        db.session.commit()
+        flash(f'Crew Log #{crew_id} unlinked.', 'warning')
+    return redirect(url_for('dispatch_edit', id=dispatch_id))
+
+
 @app.route('/dispatch/history')
 @login_required
 def dispatch_history():
