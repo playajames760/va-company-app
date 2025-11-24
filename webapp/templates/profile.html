@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row">
+  <div class="col-lg-6 mb-4">
+    <div class="p-4 bg-white rounded shadow-sm h-100">
+      <h2 class="h5 mb-3">👤 Pilot Profile</h2>
+      <dl class="row mb-0 small">
+        <dt class="col-4">Name</dt><dd class="col-8">{{ emp.name }}</dd>
+        <dt class="col-4">Email</dt><dd class="col-8">{{ emp.email }}</dd>
+        <dt class="col-4">Role</dt><dd class="col-8">{{ emp.role }}</dd>
+        <dt class="col-4">Hire Date</dt><dd class="col-8">{{ emp.hire_date.strftime('%Y-%m-%d') if emp.hire_date else '—' }}</dd>
+        <dt class="col-4">Active</dt><dd class="col-8">{{ 'Yes' if emp.active==1 else 'No' }}</dd>
+      </dl>
+      <hr class="my-3">
+      <form method="post" class="row g-3">
+        <div class="col-12">
+          <label class="form-label">Display Name</label>
+          <input type="text" name="name" class="form-control" value="{{ emp.name }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Role</label>
+          <input type="text" name="role" class="form-control" value="{{ emp.role }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label">New Password (leave blank to keep)</label>
+          <input type="password" name="new_password" class="form-control" autocomplete="new-password">
+        </div>
+        <div class="col-12 d-flex justify-content-between align-items-center mt-2">
+          <a href="{{ url_for('index') }}" class="auth-btn">← Dashboard</a>
+          <button type="submit" class="btn btn-primary">Save Profile</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-6 mb-4">
+    <div class="p-4 bg-white rounded shadow-sm h-100">
+      <h2 class="h6 mb-3">✍️ Sign-Off Activity</h2>
+      <div class="row text-center mb-3">
+        <div class="col-6">
+          <div class="p-3 rounded stat-card">
+            <div class="fw-bold">Cargo Manifests</div>
+            <div class="display-6" style="font-size:2.2rem">{{ stats.cargo_signed }}</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="p-3 rounded stat-card">
+            <div class="fw-bold">Crew Logs</div>
+            <div class="display-6" style="font-size:2.2rem">{{ stats.crew_signed }}</div>
+          </div>
+        </div>
+      </div>
+      <p class="small text-muted mb-0">Sign-offs represent immersion approvals that cargo was delivered or crew log data is accurate.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

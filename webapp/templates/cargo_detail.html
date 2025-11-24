@@ -19,6 +19,26 @@
     <dt class="col-sm-3">Pieces</dt><dd class="col-sm-9">{{ m.pieces }}</dd>
     <dt class="col-sm-3">Notes</dt><dd class="col-sm-9"><pre class="small bg-light p-2 border rounded" style="white-space:pre-wrap">{{ m.notes }}</pre></dd>
   </dl>
+  <hr class="my-3">
+  <div>
+    <h5 class="h6 mb-2">Manifest Sign-Offs</h5>
+    {% if signoffs and signoffs|length > 0 %}
+      <ul class="list-unstyled small mb-2">
+        {% for so in signoffs %}
+          <li class="mb-1">✅ {{ so.employee.name }} ({{ so.employee.role }}) – {{ so.timestamp.strftime('%Y-%m-%d %H:%MZ') }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="small text-muted mb-2">No sign-offs yet.</p>
+    {% endif %}
+    {% if current_employee %}
+      <form method="post" action="{{ url_for('cargo_sign', id=m.id) }}" class="d-inline">
+        <button class="btn btn-outline-success btn-sm" {% if signoffs and signoffs|selectattr('employee_id','equalto', current_employee.id)|list|length > 0 %}disabled{% endif %}>Sign Manifest</button>
+      </form>
+    {% else %}
+      <a href="{{ url_for('login') }}" class="btn btn-outline-primary btn-sm">Login to sign</a>
+    {% endif %}
+  </div>
   <div class="mt-3 d-flex flex-wrap gap-2">
     <a class="btn btn-outline-primary btn-sm" href="{{ url_for('crew', date=m.date, origin=m.departure, destination=m.arrival, cargo_manifest_id=m.id, dispatch_release_id=m.dispatch_release_id) }}">Log Crew</a>
     <a class="btn btn-outline-primary btn-sm" href="{{ url_for('dispatch', date=m.date, departure=m.departure, destination=m.arrival) }}">Create Dispatch</a>
@@ -30,6 +50,30 @@
     <form action="{{ url_for('delete_cargo', id=m.id) }}" method="post" class="d-inline ms-auto" onsubmit="return confirm('Delete this cargo manifest?');">
       <button class="btn btn-outline-danger btn-sm">Delete</button>
     </form>
+  </div>
+  <div class="mt-4">
+    <h3 class="h6">Sign-Offs</h3>
+    {% if signoffs and signoffs|length > 0 %}
+      <ul class="small mb-2">
+        {% for so in signoffs %}
+          <li>{{ so.timestamp.strftime('%Y-%m-%d %H:%MZ') }} – {{ so.employee.name }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="small text-muted mb-2">No sign-offs yet.</div>
+    {% endif %}
+    {% if current_employee %}
+      {% set already = signoffs|selectattr('employee_id','equalto', current_employee.id)|list %}
+      {% if already|length == 0 %}
+        <form method="post" action="{{ url_for('cargo_sign', id=m.id) }}">
+          <button class="btn btn-outline-success btn-sm">Sign Off Manifest</button>
+        </form>
+      {% else %}
+        <div class="text-success small">You have signed off this manifest.</div>
+      {% endif %}
+    {% else %}
+      <div class="small text-muted">Login to sign off.</div>
+    {% endif %}
   </div>
   <hr class="my-4">
   <div id="editForm" class="{{ '' if editing else 'd-none' }}">

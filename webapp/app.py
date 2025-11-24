@@ -1,9 +1,10 @@
-from flask import Flask, render_template, redirect, url_for, request, flash, send_from_directory, abort
+from flask import Flask, render_template, redirect, url_for, request, flash, send_from_directory, abort, session
 import datetime
 from flask_sqlalchemy import SQLAlchemy
 import os
 import re
 import xml.etree.ElementTree as ET
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Application version
 APP_VERSION = 'v1.0.0'
@@ -27,6 +28,7 @@ class CargoManifest(db.Model):
     pieces = db.Column(db.String(10))
     notes = db.Column(db.Text)
     dispatch_release_id = db.Column(db.Integer, db.ForeignKey('dispatch_release.id'))
+    signoffs = db.relationship('CargoManifestSignOff', backref='manifest', lazy='dynamic')
 
 
 class DispatchRelease(db.Model):
@@ -98,6 +100,7 @@ class CrewLog(db.Model):
     cargo_manifest_id = db.Column(db.Integer, db.ForeignKey('cargo_manifest.id'))
     dispatch_release = db.relationship('DispatchRelease', lazy='joined')
     cargo_manifest = db.relationship('CargoManifest', lazy='joined')
+    signoffs = db.relationship('CrewLogSignOff', backref='crew_log', lazy='dynamic')
 
 
 class CompanyNotam(db.Model):
@@ -131,6 +134,37 @@ class AppSettings(db.Model):
     distance_unit = db.Column(db.String(10), default='NM')  # NM or KM
     weight_unit = db.Column(db.String(10), default='lbs')  # lbs or kg
     show_workflow_help = db.Column(db.Integer, default=1)  # 1 = show, 0 = hide
+
+class Employee(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), unique=True)
+    role = db.Column(db.String(50), default='Pilot')
+    hire_date = db.Column(db.Date, default=datetime.date.today)
+    active = db.Column(db.Integer, default=1)
+    password_hash = db.Column(db.String(255))
+
+    def set_password(self, password: str):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password: str):
+        if not self.password_hash:
+            return False
+        return check_password_hash(self.password_hash, password)
+
+class CargoManifestSignOff(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    cargo_manifest_id = db.Column(db.Integer, db.ForeignKey('cargo_manifest.id'), nullable=False)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employee.id'), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    employee = db.relationship('Employee', lazy='joined')
+
+class CrewLogSignOff(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    crew_log_id = db.Column(db.Integer, db.ForeignKey('crew_log.id'), nullable=False)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employee.id'), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    employee = db.relationship('Employee', lazy='joined')
 
 # Forward declaration - will be populated after helper functions are defined
 _needs_seeding = False
@@ -217,6 +251,12 @@ with app.app_context():
     if FleetEntry.query.count() == 0:
         _needs_seeding = True
         print("⏳ Database is empty - will seed sample data after initialization")
+    # Ensure at least one employee exists for authentication
+    if Employee.query.count() == 0:
+        default_emp = Employee(name='Admin Pilot', email='admin@palmroute.local', role='Administrator')
+        default_emp.set_password('pilot')  # default password
+        db.session.add(default_emp)
+        db.session.commit()
 
 
 # Make settings available in all templates
@@ -228,7 +268,10 @@ def inject_settings():
             settings = AppSettings(company_name='Palm Route Air')
     except:
         settings = None
-    return dict(app_settings=settings, app_version=APP_VERSION)
+    current_employee = None
+    if session.get('employee_id'):
+        current_employee = Employee.query.get(session['employee_id'])
+    return dict(app_settings=settings, app_version=APP_VERSION, current_employee=current_employee)
 
 
 # --- Helper Parsers -------------------------------------------------------
@@ -1567,7 +1610,8 @@ def cargo_detail(id):
             for e in errors:
                 flash(e,'error')
             dispatch_options = DispatchRelease.query.order_by(DispatchRelease.id.desc()).limit(50).all()
-            return render_template('cargo_detail.html', m=m, dispatch_options=dispatch_options, editing=True)
+            signoffs = m.signoffs.order_by(CargoManifestSignOff.timestamp.asc()).all()
+            return render_template('cargo_detail.html', m=m, dispatch_options=dispatch_options, editing=True, signoffs=signoffs)
         db.session.commit()
         # Recalculate cargo weights for old and new dispatch links
         if old_dispatch_id and old_dispatch_id != m.dispatch_release_id:
@@ -1598,7 +1642,8 @@ def cargo_detail(id):
         return redirect(url_for('cargo_detail', id=m.id))
     dispatch_options = DispatchRelease.query.order_by(DispatchRelease.id.desc()).limit(50).all()
     editing_flag = True if request.args.get('edit') == '1' else False
-    return render_template('cargo_detail.html', m=m, dispatch_options=dispatch_options, editing=editing_flag)
+    signoffs = m.signoffs.order_by(CargoManifestSignOff.timestamp.asc()).all()
+    return render_template('cargo_detail.html', m=m, dispatch_options=dispatch_options, editing=editing_flag, signoffs=signoffs)
 
 @app.route('/cargo/<int:id>/unlink_dispatch', methods=['POST'])
 def cargo_unlink_dispatch(id):
@@ -1626,7 +1671,8 @@ def crew_detail(id):
     c = CrewLog.query.get_or_404(id)
     dispatch_ref = DispatchRelease.query.get(c.dispatch_release_id) if c.dispatch_release_id else None
     cargo_ref = CargoManifest.query.get(c.cargo_manifest_id) if c.cargo_manifest_id else None
-    return render_template('crew_detail.html', c=c, dispatch_ref=dispatch_ref, cargo_ref=cargo_ref)
+    signoffs = c.signoffs.order_by(CrewLogSignOff.timestamp.asc()).all()
+    return render_template('crew_detail.html', c=c, dispatch_ref=dispatch_ref, cargo_ref=cargo_ref, signoffs=signoffs)
 
 @app.route('/crew/<int:id>/edit', methods=['GET','POST'])
 def crew_edit(id):
@@ -1686,6 +1732,84 @@ def notam_detail(id):
 def fleet_detail(id):
     f = FleetEntry.query.get_or_404(id)
     return render_template('fleet_detail.html', f=f)
+
+
+# --- Authentication & Pilot Profile ---
+@app.route('/login', methods=['GET','POST'])
+def login():
+    if request.method == 'POST':
+        email = (request.form.get('email') or '').strip().lower()
+        password = request.form.get('password') or ''
+        user = Employee.query.filter(db.func.lower(Employee.email)==email).first()
+        if user and user.check_password(password):
+            session['employee_id'] = user.id
+            flash(f'Welcome, {user.name}!', 'success')
+            return redirect(url_for('index'))
+        flash('Invalid credentials', 'error')
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('employee_id', None)
+    flash('Logged out.', 'info')
+    return redirect(url_for('index'))
+
+@app.route('/profile', methods=['GET','POST'])
+def profile():
+    if not session.get('employee_id'):
+        return redirect(url_for('login'))
+    emp = Employee.query.get(session['employee_id'])
+    if request.method == 'POST':
+        emp.name = request.form.get('name') or emp.name
+        emp.role = request.form.get('role') or emp.role
+        new_pw = request.form.get('new_password')
+        if new_pw:
+            emp.set_password(new_pw)
+            flash('Password updated.', 'success')
+        db.session.commit()
+        flash('Profile updated.', 'success')
+        return redirect(url_for('profile'))
+    cargo_signed = CargoManifestSignOff.query.filter_by(employee_id=emp.id).count()
+    crew_signed = CrewLogSignOff.query.filter_by(employee_id=emp.id).count()
+    return render_template('profile.html', emp=emp, stats={'cargo_signed': cargo_signed, 'crew_signed': crew_signed})
+
+def _require_login():
+    if not session.get('employee_id'):
+        flash('Login required for sign-off.', 'error')
+        return False
+    return True
+
+@app.route('/cargo/<int:id>/sign', methods=['POST'])
+def cargo_sign(id):
+    if not _require_login():
+        return redirect(url_for('login'))
+    m = CargoManifest.query.get_or_404(id)
+    emp_id = session['employee_id']
+    existing = CargoManifestSignOff.query.filter_by(cargo_manifest_id=m.id, employee_id=emp_id).first()
+    if existing:
+        flash('You already signed off this manifest.', 'warning')
+    else:
+        so = CargoManifestSignOff(cargo_manifest_id=m.id, employee_id=emp_id)
+        db.session.add(so)
+        db.session.commit()
+        flash('Cargo manifest signed off.', 'success')
+    return redirect(url_for('cargo_detail', id=m.id))
+
+@app.route('/crew/<int:id>/sign', methods=['POST'])
+def crew_sign(id):
+    if not _require_login():
+        return redirect(url_for('login'))
+    c = CrewLog.query.get_or_404(id)
+    emp_id = session['employee_id']
+    existing = CrewLogSignOff.query.filter_by(crew_log_id=c.id, employee_id=emp_id).first()
+    if existing:
+        flash('You already signed off this crew log.', 'warning')
+    else:
+        so = CrewLogSignOff(crew_log_id=c.id, employee_id=emp_id)
+        db.session.add(so)
+        db.session.commit()
+        flash('Crew log signed off.', 'success')
+    return redirect(url_for('crew_detail', id=c.id))
 
 
 if __name__ == '__main__':

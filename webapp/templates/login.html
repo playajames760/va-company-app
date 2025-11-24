@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="p-4 bg-white rounded shadow-sm">
+      <h2 class="h5 mb-3">🔐 Employee Login</h2>
+      <form method="post" class="row g-3">
+        <div class="col-12">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-control" placeholder="pilot@example.com" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Password</label>
+          <input type="password" name="password" class="form-control" required>
+        </div>
+        <div class="col-12 d-flex justify-content-between align-items-center mt-2">
+          <a href="{{ url_for('index') }}" class="auth-btn">← Back</a>
+          <button type="submit" class="btn btn-primary">Login</button>
+        </div>
+      </form>
+      <hr class="my-4">
+      <p class="small text-muted mb-0">Default admin: <code>admin@palmroute.local</code> / <code>pilot</code>. Change password in Profile.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

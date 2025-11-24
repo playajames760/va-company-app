@@ -30,5 +30,28 @@
     <dt class="col-sm-3">Fuel Used</dt><dd class="col-sm-9">{{ c.fuel_used or '—' }}</dd>
     <dt class="col-sm-3">Remarks</dt><dd class="col-sm-9"><pre class="small bg-light p-2 border rounded" style="white-space:pre-wrap">{{ c.remarks }}</pre></dd>
   </dl>
+  <div class="mt-4">
+    <h3 class="h6">Sign-Offs</h3>
+    <hr class="my-3">
+    <div>
+      <h5 class="h6 mb-2">Crew Log Sign-Offs</h5>
+      {% if signoffs and signoffs|length > 0 %}
+        <ul class="list-unstyled small mb-2">
+          {% for so in signoffs %}
+            <li class="mb-1">✍️ {{ so.employee.name }} ({{ so.employee.role }}) – {{ so.timestamp.strftime('%Y-%m-%d %H:%MZ') }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="small text-muted mb-2">No sign-offs yet.</p>
+      {% endif %}
+      {% if current_employee %}
+        <form method="post" action="{{ url_for('crew_sign', id=c.id) }}" class="d-inline">
+          <button class="btn btn-outline-success btn-sm" {% if signoffs and signoffs|selectattr('employee_id','equalto', current_employee.id)|list|length > 0 %}disabled{% endif %}>Sign Crew Log</button>
+        </form>
+      {% else %}
+        <a href="{{ url_for('login') }}" class="btn btn-outline-primary btn-sm">Login to sign</a>
+      {% endif %}
+    </div>
+  </div>
 </div>
 {% endblock %}

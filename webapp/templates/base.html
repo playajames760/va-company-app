@@ -49,6 +49,34 @@
         background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%) !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.3);
       }
+      /* Light theme navbar override for better contrast */
+      [data-bs-theme="light"] .navbar {
+        background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%) !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      }
+      [data-bs-theme="light"] .navbar .navbar-brand,
+      [data-bs-theme="light"] .navbar .nav-link {
+        color: #1e293b !important;
+      }
+      [data-bs-theme="light"] .navbar .nav-link:hover {
+        color: #0f172a !important;
+      }
+      [data-bs-theme="light"] .navbar .btn-outline-light {
+        color: #1e293b !important;
+        border-color: #94a3b8 !important;
+      }
+      [data-bs-theme="light"] .navbar .btn-outline-light:hover {
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
+        border-color: #64748b !important;
+      }
+      [data-bs-theme="dark"] .navbar .btn-outline-light {
+        border-color: rgba(255,255,255,0.6) !important;
+      }
+      .auth-actions .btn { transition: background-color .15s, color .15s; }
+      .auth-user-text { font-size: .75rem; font-weight: 600; letter-spacing: .5px; }
+      [data-bs-theme="light"] .auth-user-text { color: #334155; }
+      [data-bs-theme="dark"] .auth-user-text { color: #f1f5f9; }
       
       .card, .shadow-sm, .rounded.shadow-sm {
         background-color: var(--bs-card-bg);
@@ -144,6 +172,40 @@
       .text-muted {
         opacity: 0.7;
       }
+
+      /* Auth / profile buttons adaptive styling */
+      .auth-btn {
+        font-size: .75rem;
+        font-weight: 600;
+        padding: .45rem .75rem;
+        border: 1px solid var(--bs-border-color);
+        background: transparent;
+        color: var(--bs-body-color);
+        border-radius: .375rem;
+        display: inline-flex;
+        align-items: center;
+        gap: .25rem;
+        text-decoration: none;
+        transition: background .15s, color .15s, border-color .15s;
+      }
+      .auth-btn:hover {
+        background: rgba(13,110,253,0.15);
+        color: var(--bs-emphasis-color);
+        text-decoration: none;
+        border-color: var(--pra-primary);
+      }
+      [data-bs-theme="light"] .auth-btn:hover {
+        background: rgba(13,110,253,0.08);
+      }
+      .auth-badge {
+        font-size: .65rem;
+        background: rgba(255,255,255,0.15);
+        padding: .25rem .4rem;
+        border-radius: .35rem;
+      }
+      [data-bs-theme="light"] .auth-badge {
+        background: rgba(0,0,0,0.08);
+      }
     </style>
   </head>
   <body>
@@ -176,6 +238,15 @@
           <button class="theme-toggle text-white" onclick="toggleTheme()" title="Toggle theme">
             <span id="theme-icon">🌙</span>
           </button>
+          <div class="ms-3 d-flex align-items-center auth-actions">
+            {% if current_employee %}
+              <span class="auth-user-text me-2">👤 {{ current_employee.name }} ({{ current_employee.role }})</span>
+              <a href="{{ url_for('profile') }}" class="btn btn-outline-light btn-sm me-2" title="View Profile">Profile</a>
+              <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm" title="Logout">Logout</a>
+            {% else %}
+              <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-sm" title="Employee Login">Login</a>
+            {% endif %}
+          </div>
         </div>
       </div>
     </nav>
