@@ -61,22 +61,46 @@
       [data-bs-theme="light"] .navbar .nav-link:hover {
         color: #0f172a !important;
       }
+      /* Auth buttons and user info - light theme */
       [data-bs-theme="light"] .navbar .btn-outline-light {
         color: #1e293b !important;
         border-color: #94a3b8 !important;
+        background-color: transparent !important;
       }
       [data-bs-theme="light"] .navbar .btn-outline-light:hover {
-        background-color: #f1f5f9 !important;
+        background-color: #e2e8f0 !important;
         color: #0f172a !important;
         border-color: #64748b !important;
       }
+      
+      /* Auth buttons and user info - dark theme */
       [data-bs-theme="dark"] .navbar .btn-outline-light {
-        border-color: rgba(255,255,255,0.6) !important;
+        color: #f8f9fa !important;
+        border-color: rgba(255,255,255,0.5) !important;
+        background-color: transparent !important;
       }
-      .auth-actions .btn { transition: background-color .15s, color .15s; }
-      .auth-user-text { font-size: .75rem; font-weight: 600; letter-spacing: .5px; }
-      [data-bs-theme="light"] .auth-user-text { color: #334155; }
-      [data-bs-theme="dark"] .auth-user-text { color: #f1f5f9; }
+      [data-bs-theme="dark"] .navbar .btn-outline-light:hover {
+        background-color: rgba(255,255,255,0.15) !important;
+        color: #ffffff !important;
+        border-color: rgba(255,255,255,0.75) !important;
+      }
+      
+      .auth-actions .btn { 
+        transition: background-color .15s, color .15s, border-color .15s; 
+      }
+      
+      .auth-user-text { 
+        font-size: .75rem; 
+        font-weight: 600; 
+        letter-spacing: .5px;
+        opacity: 0.95;
+      }
+      [data-bs-theme="light"] .auth-user-text { 
+        color: #334155; 
+      }
+      [data-bs-theme="dark"] .auth-user-text { 
+        color: #e2e8f0; 
+      }
       
       .card, .shadow-sm, .rounded.shadow-sm {
         background-color: var(--bs-card-bg);

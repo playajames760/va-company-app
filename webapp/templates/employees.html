@@ -1,8 +1,12 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="p-4 bg-white rounded shadow-sm">
-  <h2 class="h5 mb-3">Employees & Roles</h2>
-  <table class="table table-sm align-middle mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Employees & Roles</h2>
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
+  </div>
+  <div class="table-responsive">
+  <table class="table table-sm table-hover align-middle mb-0">
     <thead class="pra-thead">
       <tr>
         <th>ID</th>
@@ -38,6 +42,6 @@
       {% endfor %}
     </tbody>
   </table>
-  <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">Home</a>
+  </div>
 </div>
 {% endblock %}

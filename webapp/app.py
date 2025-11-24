@@ -1835,7 +1835,17 @@ def profile():
     emp = Employee.query.get(session['employee_id'])
     if request.method == 'POST':
         emp.name = request.form.get('name') or emp.name
-        emp.role = request.form.get('role') or emp.role
+        requested_role = request.form.get('role') or emp.role
+        # Prevent demoting the last remaining Administrator
+        if requested_role != emp.role:
+            if emp.role == 'Administrator' and requested_role != 'Administrator':
+                admin_count = Employee.query.filter_by(role='Administrator').count()
+                if admin_count == 1:
+                    flash('Cannot remove the last Administrator. Assign another Administrator first.', 'error')
+                else:
+                    emp.role = requested_role
+            else:
+                emp.role = requested_role
         new_pw = request.form.get('new_password')
         if new_pw:
             emp.set_password(new_pw)
@@ -1856,9 +1866,17 @@ def employees():
         if target_id and new_role:
             e = Employee.query.get(int(target_id))
             if e:
-                e.role = new_role
-                db.session.commit()
-                flash('Employee role updated.', 'success')
+                if e.role == 'Administrator' and new_role != 'Administrator':
+                    admin_count = Employee.query.filter_by(role='Administrator').count()
+                    if admin_count == 1:
+                        flash('Cannot change role: system requires at least one Administrator.', 'error')
+                        return redirect(url_for('employees'))
+                if new_role != e.role:
+                    e.role = new_role
+                    db.session.commit()
+                    flash('Employee role updated.', 'success')
+                else:
+                    flash('No role change.', 'info')
         return redirect(url_for('employees'))
     emps = Employee.query.order_by(Employee.name.asc()).all()
     roles = ['Pilot','Manager','Administrator']
