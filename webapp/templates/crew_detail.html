@@ -2,8 +2,11 @@
 {% block content %}
 <div class="p-4 bg-white rounded shadow-sm">
   <div class="d-flex justify-content-between align-items-center mb-2">
-    <h2 class="mb-0">Crew Log #{{ c.id }}</h2>
-    <a href="{{ url_for('crew_history') }}" class="btn btn-outline-secondary btn-sm">History</a>
+    <h2 class="mb-0">Crew Log #{{ c.id }} – {{ c.flight_id }}</h2>
+    <div class="btn-group">
+      <a href="{{ url_for('crew_history') }}" class="btn btn-outline-secondary btn-sm">History</a>
+      <a href="{{ url_for('crew_edit', id=c.id) }}" class="btn btn-outline-warning btn-sm">Edit</a>
+    </div>
   </div>
   {% if c.dispatch_release_id %}
     <div class="alert alert-info small mb-3">Linked to Dispatch Release <a href="{{ url_for('dispatch_detail', id=c.dispatch_release_id) }}" class="alert-link">#{{ c.dispatch_release_id }}</a>.</div>
@@ -21,6 +24,7 @@
     <dt class="col-sm-3">Block On</dt><dd class="col-sm-9">{{ c.block_on }}</dd>
     <dt class="col-sm-3">Block Time</dt><dd class="col-sm-9">{{ c.block_time }}</dd>
     <dt class="col-sm-3">Cargo Weight (lbs)</dt><dd class="col-sm-9">{{ c.cargo_weight }}</dd>
+    <dt class="col-sm-3">Fuel Used</dt><dd class="col-sm-9">{{ c.fuel_used or '—' }}</dd>
     <dt class="col-sm-3">Remarks</dt><dd class="col-sm-9"><pre class="small bg-light p-2 border rounded" style="white-space:pre-wrap">{{ c.remarks }}</pre></dd>
   </dl>
 </div>

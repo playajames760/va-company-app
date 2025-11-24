@@ -49,6 +49,7 @@ class DispatchRelease(db.Model):
     flight_plan_raw = db.Column(db.Text)        # Raw uploaded flight plan content (SimBrief, etc.)
     flight_plan_source = db.Column(db.String(30))  # Source identifier e.g. 'simbrief'
     briefing_pdf_filename = db.Column(db.String(120))  # Stored PDF briefing filename (in ./briefings)
+    completed = db.Column(db.Integer, default=0)  # 0 = planned/in-progress, 1 = completed
     cargo_manifests = db.relationship('CargoManifest', backref='dispatch_release', lazy='dynamic')
     fleet_entry = db.relationship('FleetEntry', lazy='joined')
 
@@ -125,7 +126,8 @@ with app.app_context():
         'fleet_entry_id': 'INTEGER',
         'flight_plan_raw': 'TEXT',
         'flight_plan_source': 'TEXT',
-        'briefing_pdf_filename': 'TEXT'
+        'briefing_pdf_filename': 'TEXT',
+        'completed': 'INTEGER'
     }
     for col, ddl in new_cols.items():
         if col not in existing_cols:
@@ -336,6 +338,7 @@ def index():
     logs = CrewLog.query.order_by(CrewLog.id.desc()).limit(5).all()
     notams = CompanyNotam.query.order_by(CompanyNotam.id.desc()).limit(5).all()
     fleet_entries = FleetEntry.query.order_by(FleetEntry.id.desc()).all()
+    acct = CompanyAccount.query.first()
     counts = {
         'cargo_manifests': CargoManifest.query.count(),
         'dispatch_releases': DispatchRelease.query.count(),
@@ -343,7 +346,15 @@ def index():
         'company_notams': CompanyNotam.query.count(),
         'fleet_entries': FleetEntry.query.count()
     }
-    return render_template('index.html', manifests=manifests, releases=releases, logs=logs, notams=notams, fleet_entries=fleet_entries, counts=counts)
+    completed_dispatches = DispatchRelease.query.filter_by(completed=1).all()
+    total_completed_profit = 0.0
+    for cd in completed_dispatches:
+        try:
+            _rev,_cost,_prof,_dist = compute_dispatch_financials(cd)
+            total_completed_profit += _prof
+        except Exception:
+            pass
+    return render_template('index.html', manifests=manifests, releases=releases, logs=logs, notams=notams, fleet_entries=fleet_entries, counts=counts, completed_profit=round(total_completed_profit,2))
 
 
 @app.route('/cargo', methods=['GET', 'POST'])
@@ -592,11 +603,12 @@ def dispatch():
 def dispatch_detail(id):
     d = DispatchRelease.query.get_or_404(id)
     linked_manifests = d.cargo_manifests.order_by(CargoManifest.id.desc()).all()
+    crew_logs = CrewLog.query.filter_by(dispatch_release_id=d.id).order_by(CrewLog.id.desc()).all()
     pln_data = None
     if d.flight_plan_raw and (d.flight_plan_source == 'msfs-pln' or '<SimBase.Document' in d.flight_plan_raw):
         pln_data = parse_pln(d.flight_plan_raw)
     revenue, costs, profit, distance_nm = compute_dispatch_financials(d)
-    return render_template('dispatch_detail.html', d=d, linked_manifests=linked_manifests, pln=pln_data, fin_summary={'revenue':revenue,'costs':costs,'profit':profit,'distance_nm':distance_nm})
+    return render_template('dispatch_detail.html', d=d, linked_manifests=linked_manifests, crew_logs=crew_logs, pln=pln_data, fin_summary={'revenue':revenue,'costs':costs,'profit':profit,'distance_nm':distance_nm})
 
 @app.route('/dispatch/<int:id>/simbrief')
 def dispatch_simbrief(id):
@@ -789,8 +801,17 @@ def dispatch_edit(id):
     }
     cargo_manifest_options = CargoManifest.query.filter_by(dispatch_release_id=None).order_by(CargoManifest.id.desc()).limit(25).all()
     linked_manifests = d.cargo_manifests.order_by(CargoManifest.id.desc()).all()
+    crew_logs = CrewLog.query.filter_by(dispatch_release_id=d.id).order_by(CrewLog.id.desc()).all()
     fleet_entry_options = FleetEntry.query.order_by(FleetEntry.status.asc(), FleetEntry.registration.asc()).all()
-    return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id, cargo_manifest_options=cargo_manifest_options, linked_manifests=linked_manifests, fleet_entry_options=fleet_entry_options)
+    return render_template('dispatch_form.html', defaults=defaults, edit_id=d.id, cargo_manifest_options=cargo_manifest_options, linked_manifests=linked_manifests, crew_logs=crew_logs, fleet_entry_options=fleet_entry_options)
+
+@app.route('/dispatch/<int:id>/toggle_complete', methods=['POST'])
+def dispatch_toggle_complete(id):
+    d = DispatchRelease.query.get_or_404(id)
+    d.completed = 0 if d.completed == 1 else 1
+    db.session.commit()
+    flash(f'Dispatch #{d.id} marked {"completed" if d.completed==1 else "in-progress"}.', 'success')
+    return redirect(url_for('dispatch_detail', id=d.id))
 
 @app.route('/economy')
 def economy_ledger():
@@ -1144,7 +1165,58 @@ def cargo_unlink_dispatch(id):
 @app.route('/crew/<int:id>')
 def crew_detail(id):
     c = CrewLog.query.get_or_404(id)
-    return render_template('crew_detail.html', c=c)
+    dispatch_ref = DispatchRelease.query.get(c.dispatch_release_id) if c.dispatch_release_id else None
+    cargo_ref = CargoManifest.query.get(c.cargo_manifest_id) if c.cargo_manifest_id else None
+    return render_template('crew_detail.html', c=c, dispatch_ref=dispatch_ref, cargo_ref=cargo_ref)
+
+@app.route('/crew/<int:id>/edit', methods=['GET','POST'])
+def crew_edit(id):
+    c = CrewLog.query.get_or_404(id)
+    if request.method == 'POST':
+        old_fuel = c.fuel_used
+        fields = ['date','flight_id','origin','destination','aircraft','block_off','block_on','block_time','cargo_weight','fuel_used','remarks']
+        for f in fields:
+            setattr(c, f, request.form.get(f))
+        db.session.commit()
+        # Adjust fuel reconciliation transaction if fuel changed and dispatch linked
+        if c.dispatch_release_id and c.fuel_used:
+            dr = DispatchRelease.query.get(c.dispatch_release_id)
+            acct = CompanyAccount.query.first()
+            if dr and acct:
+                try:
+                    actual_fuel = float(c.fuel_used)
+                except ValueError:
+                    actual_fuel = None
+                planned_fuel = None
+                if dr.fuel_planned:
+                    try:
+                        planned_fuel = float(dr.fuel_planned)
+                    except ValueError:
+                        planned_fuel = None
+                if actual_fuel is not None and planned_fuel is not None:
+                    planned_cost = planned_fuel * ECONOMY_CONSTANTS['FUEL_COST_PER_UNIT']
+                    diff = (actual_fuel * ECONOMY_CONSTANTS['FUEL_COST_PER_UNIT']) - planned_cost
+                    existing_tx = Transaction.query.filter_by(crew_log_id=c.id).filter(Transaction.description.like(f'Fuel % dispatch #{dr.id}')).first()
+                    if existing_tx:
+                        # Reverse old balance effect
+                        if existing_tx.type == 'expense':
+                            acct.balance += existing_tx.amount
+                        else:
+                            acct.balance -= existing_tx.amount
+                        db.session.delete(existing_tx)
+                        db.session.commit()
+                    if abs(diff) >= 0.01:
+                        if diff > 0:
+                            db.session.add(Transaction(type='expense', amount=diff, description=f'Fuel overrun dispatch #{dr.id}', dispatch_release_id=dr.id, crew_log_id=c.id))
+                            acct.balance -= diff
+                        else:
+                            savings = -diff
+                            db.session.add(Transaction(type='revenue', amount=savings, description=f'Fuel savings dispatch #{dr.id}', dispatch_release_id=dr.id, crew_log_id=c.id))
+                            acct.balance += savings
+                        db.session.commit()
+        return redirect(url_for('crew_detail', id=c.id))
+    defaults = {f: getattr(c,f) for f in ['date','flight_id','origin','destination','aircraft','block_off','block_on','block_time','cargo_weight','fuel_used','remarks']}
+    return render_template('crew_edit.html', c=c, defaults=defaults)
 
 @app.route('/notams/<int:id>')
 def notam_detail(id):

@@ -144,6 +144,33 @@
     {% else %}
       <p class="text-muted small mb-0">No cargo manifests linked to this release.</p>
     {% endif %}
+    {% if edit_id %}
+    <hr class="mt-4" />
+    <h3 class="h6">Currently Linked Crew Logs</h3>
+    {% if crew_logs %}
+      <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle mb-0">
+          <thead><tr><th>#</th><th>Date</th><th>Flight</th><th>Block Time</th><th>Fuel Used</th><th>Actions</th></tr></thead>
+          <tbody>
+          {% for cl in crew_logs %}
+            <tr>
+              <td>{{ cl.id }}</td>
+              <td>{{ cl.date }}</td>
+              <td>{{ cl.flight_id }}</td>
+              <td>{{ cl.block_time }}</td>
+              <td>{{ cl.fuel_used or '—' }}</td>
+              <td class="text-nowrap">
+                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('crew_detail', id=cl.id) }}">View/Edit</a>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-muted small mb-0">No crew logs linked to this release.</p>
+    {% endif %}
+    {% endif %}
   {% endif %}
 </div>
 <script>

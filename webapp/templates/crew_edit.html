@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+  <h2 class="mb-3">Edit Crew Log #{{ c.id }}</h2>
+  <form method="post" class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label">Date</label>
+      <input type="date" name="date" class="form-control" value="{{ defaults.date }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Flight ID</label>
+      <input type="text" name="flight_id" class="form-control" value="{{ defaults.flight_id }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Origin</label>
+      <input type="text" name="origin" class="form-control" value="{{ defaults.origin }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Destination</label>
+      <input type="text" name="destination" class="form-control" value="{{ defaults.destination }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Aircraft</label>
+      <input type="text" name="aircraft" class="form-control" value="{{ defaults.aircraft }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Block Off (Z)</label>
+      <input type="text" name="block_off" class="form-control" value="{{ defaults.block_off }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Block On (Z)</label>
+      <input type="text" name="block_on" class="form-control" value="{{ defaults.block_on }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Block Time</label>
+      <input type="text" name="block_time" class="form-control" value="{{ defaults.block_time }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Cargo (lbs)</label>
+      <input type="text" name="cargo_weight" class="form-control" value="{{ defaults.cargo_weight }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Fuel Used</label>
+      <input type="text" name="fuel_used" class="form-control" value="{{ defaults.fuel_used }}">
+    </div>
+    <div class="col-12">
+      <label class="form-label">Remarks</label>
+      <textarea name="remarks" rows="3" class="form-control">{{ defaults.remarks }}</textarea>
+    </div>
+    <div class="col-12 d-flex justify-content-between mt-3">
+      <a href="{{ url_for('crew_detail', id=c.id) }}" class="btn btn-outline-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

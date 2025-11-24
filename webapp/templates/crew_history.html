@@ -20,6 +20,7 @@
           <th>Block On</th>
           <th>Block Time</th>
           <th>Cargo (lbs)</th>
+          <th>Fuel Used</th>
           <th>Remarks</th>
           <th>Actions</th>
         </tr>
@@ -37,8 +38,10 @@
           <td>{{ l.block_on }}</td>
           <td>{{ l.block_time }}</td>
           <td>{{ l.cargo_weight }}</td>
+          <td>{{ l.fuel_used or '—' }}</td>
           <td style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ l.remarks }}</td>
           <td class="text-nowrap">
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('crew_detail', id=l.id) }}">View/Edit</a>
             <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('cargo', date=l.date, flight_id=l.flight_id, aircraft=l.aircraft, departure=l.origin, arrival=l.destination) }}">Cargo</a>
             <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('dispatch', date=l.date, flight_id=l.flight_id, aircraft=l.aircraft, departure=l.origin, destination=l.destination) }}">Dispatch</a>
             <form action="{{ url_for('delete_crew', id=l.id) }}" method="post" class="d-inline">

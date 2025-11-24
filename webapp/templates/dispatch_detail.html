@@ -146,6 +146,32 @@
     <p class="text-muted small mb-0">No cargo manifests linked.</p>
   {% endif %}
   <hr>
+  <h3 class="h6">Linked Crew Logs</h3>
+  {% if crew_logs %}
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle mb-0">
+        <thead><tr><th>#</th><th>Date</th><th>Flight</th><th>Block Time</th><th>Fuel Used</th><th>Remarks</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for cl in crew_logs %}
+          <tr>
+            <td>{{ cl.id }}</td>
+            <td>{{ cl.date }}</td>
+            <td>{{ cl.flight_id }}</td>
+            <td>{{ cl.block_time }}</td>
+            <td>{{ cl.fuel_used or '—' }}</td>
+            <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ cl.remarks }}</td>
+            <td class="text-nowrap">
+              <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('crew_detail', id=cl.id) }}">View/Edit</a>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="text-muted small mb-0">No crew logs linked.</p>
+  {% endif %}
+  <hr>
   <div class="d-flex gap-2 flex-wrap">
     <a class="btn btn-outline-primary btn-sm" href="{{ url_for('cargo', date=d.date, flight_id=d.flight_id, aircraft=d.aircraft, departure=d.departure, arrival=d.destination, dispatch_release_id=d.id) }}">Create Cargo Manifest</a>
     <a class="btn btn-outline-primary btn-sm" href="{{ url_for('crew', date=d.date, flight_id=d.flight_id, origin=d.departure, destination=d.destination, aircraft=d.aircraft, dispatch_release_id=d.id) }}">Create Crew Log</a>
