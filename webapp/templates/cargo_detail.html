@@ -4,8 +4,8 @@
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h2 class="mb-0">Cargo Manifest #{{ m.id }}</h2>
     <div class="btn-group btn-group-sm">
-      <a href="{{ url_for('cargo_history') }}" class="btn btn-outline-secondary">History</a>
-      <a href="#editForm" class="btn btn-outline-primary" onclick="document.getElementById('editForm').classList.toggle('d-none');return false;">{{ 'Hide Edit' if editing else 'Edit' }}</a>
+      <a href="{{ url_for('cargo_history') }}" class="btn btn-outline-secondary btn-sm">History</a>
+      <a href="#editForm" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('editForm').classList.toggle('d-none');return false;">{{ 'Hide Edit' if editing else 'Edit' }}</a>
     </div>
   </div>
   {% if m.dispatch_release_id %}
