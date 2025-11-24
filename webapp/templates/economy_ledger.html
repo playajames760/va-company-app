@@ -2,10 +2,10 @@
 {% block content %}
 <div class="p-4 bg-white rounded shadow-sm">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Economy Ledger</h2>
+    <h2 class="mb-0">Bank Account</h2>
     <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">Back</a>
   </div>
-  <p class="text-muted small mb-2">Company financial overview. Revenue is generated per dispatch flight; costs include fuel and maintenance. Profit = Revenue - Costs. Constants are configurable in code.</p>
+  <p class="text-muted small mb-2">Company bank account overview. Revenue from completed dispatch flights increases balance; operational costs and incidents decrease it. Constants are displayed below.</p>
   <div class="row g-3 mb-3">
     <div class="col-md-4">
       <div class="border rounded p-3 h-100">
